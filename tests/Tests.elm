@@ -4,6 +4,7 @@ module Tests exposing
     , empty
     , faceVertices
     , faces
+    , fromTriangular
     , joinVertices
     , mapVertices
     , toTriangular
@@ -201,6 +202,32 @@ toTriangular =
                             [ ( 'a', 'b', 'c' )
                             , ( 'a', 'c', 'd' )
                             , ( 'e', 'f', 'g' )
+                            ]
+                    ]
+        )
+
+
+fromTriangular : Test
+fromTriangular =
+    Test.test "fromTriangular"
+        (\() ->
+            TriangularMesh.indexed
+                (Array.fromList [ 'a', 'b', 'c', 'd' ])
+                [ ( 0, 1, 2 ), ( 0, 2, 3 ) ]
+                |> Mesh.fromTriangularMesh
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal [ 'a', 'b', 'c', 'd' ]
+                    , Mesh.faceIndices
+                        >> Expect.equal
+                            [ [ 0, 1, 2 ]
+                            , [ 0, 2, 3 ]
+                            ]
+                    , Mesh.faceVertices
+                        >> Expect.equal
+                            [ [ 'a', 'b', 'c' ]
+                            , [ 'a', 'c', 'd' ]
                             ]
                     ]
         )

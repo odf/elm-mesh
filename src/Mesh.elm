@@ -7,6 +7,7 @@ module Mesh exposing
     , faceIndices
     , faceVertices
     , faces
+    , fromTriangularMesh
     , indexed
     , joinVertices
     , mapVertices
@@ -230,3 +231,13 @@ toTriangularMesh mesh =
     TriangularMesh.indexed
         (vertices mesh)
         (faceIndices mesh |> List.concatMap triangulate)
+
+
+fromTriangularMesh : TriangularMesh vertex -> Mesh vertex
+fromTriangularMesh trimesh =
+    Mesh
+        { vertices = TriangularMesh.vertices trimesh
+        , faceIndices =
+            TriangularMesh.faceIndices trimesh
+                |> List.map (\( u, v, w ) -> [ u, v, w ])
+        }
