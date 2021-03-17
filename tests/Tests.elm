@@ -4,6 +4,7 @@ module Tests exposing
     , empty
     , faceVertices
     , faces
+    , joinVertices
     , mapVertices
     )
 
@@ -142,6 +143,36 @@ combine =
                             [ [ 'e', 'f', 'g' ]
                             , [ 'a', 'b', 'c', 'd' ]
                             , [ 'e', 'f', 'g' ]
+                            ]
+                    ]
+        )
+
+
+joinVertices : Test
+joinVertices =
+    Test.test "joinVertices"
+        (\() ->
+            Mesh.faces
+                [ [ 'a', 'b', 'c' ]
+                , [ 'a', 'c', 'd' ]
+                , [ 'd', 'c', 'b', 'a' ]
+                ]
+                |> Mesh.joinVertices
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal [ 'a', 'b', 'c', 'd' ]
+                    , Mesh.faceIndices
+                        >> Expect.equal
+                            [ [ 0, 1, 2 ]
+                            , [ 0, 2, 3 ]
+                            , [ 3, 2, 1, 0 ]
+                            ]
+                    , Mesh.faceVertices
+                        >> Expect.equal
+                            [ [ 'a', 'b', 'c' ]
+                            , [ 'a', 'c', 'd' ]
+                            , [ 'd', 'c', 'b', 'a' ]
                             ]
                     ]
         )

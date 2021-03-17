@@ -8,6 +8,7 @@ module Mesh exposing
     , faceVertices
     , faces
     , indexed
+    , joinVertices
     , mapVertices
     , vertex
     , vertices
@@ -152,3 +153,61 @@ combine meshes =
                     []
     in
     Mesh { vertices = vertices_, faceIndices = makeFaces 0 meshes }
+
+
+unique : List a -> List a
+unique list =
+    let
+        unique_ seen xs =
+            case xs of
+                first :: rest ->
+                    if List.any ((==) first) seen then
+                        unique_ seen rest
+
+                    else
+                        unique_ (first :: seen) rest
+
+                _ ->
+                    List.reverse seen
+    in
+    unique_ [] list
+
+
+position : a -> List a -> Maybe Int
+position item list =
+    let
+        position_ offset xs =
+            case xs of
+                first :: rest ->
+                    if item == first then
+                        Just offset
+
+                    else
+                        position_ (offset + 1) rest
+
+                _ ->
+                    Nothing
+    in
+    position_ 0 list
+
+
+joinVertices : Mesh a -> Mesh a
+joinVertices mesh =
+    let
+        allVertices =
+            vertices mesh
+
+        uniqueVertices =
+            Array.toList allVertices
+                |> unique
+
+        newIndex i =
+            Array.get i allVertices
+                |> Maybe.andThen (\v -> position v uniqueVertices)
+    in
+    Mesh
+        { vertices = Array.fromList uniqueVertices
+        , faceIndices =
+            faceIndices mesh
+                |> List.map (List.filterMap newIndex)
+        }
