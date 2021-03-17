@@ -10,12 +10,14 @@ module Mesh exposing
     , indexed
     , joinVertices
     , mapVertices
+    , toTriangularMesh
     , vertex
     , vertices
     )
 
 import Array exposing (Array)
 import Set
+import TriangularMesh exposing (TriangularMesh)
 
 
 type Mesh vertex
@@ -211,3 +213,20 @@ joinVertices mesh =
             faceIndices mesh
                 |> List.map (List.filterMap newIndex)
         }
+
+
+triangulate : List vertex -> List ( vertex, vertex, vertex )
+triangulate corners =
+    case corners of
+        u :: v :: rest ->
+            List.map2 (\r s -> ( u, r, s )) (v :: rest) rest
+
+        _ ->
+            []
+
+
+toTriangularMesh : Mesh vertex -> TriangularMesh vertex
+toTriangularMesh mesh =
+    TriangularMesh.indexed
+        (vertices mesh)
+        (faceIndices mesh |> List.concatMap triangulate)

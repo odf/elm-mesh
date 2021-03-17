@@ -6,12 +6,14 @@ module Tests exposing
     , faces
     , joinVertices
     , mapVertices
+    , toTriangular
     )
 
 import Array
 import Expect exposing (Expectation)
 import Mesh exposing (Mesh)
 import Test exposing (Test)
+import TriangularMesh exposing (TriangularMesh)
 
 
 square : Mesh Char
@@ -173,6 +175,32 @@ joinVertices =
                             [ [ 'a', 'b', 'c' ]
                             , [ 'a', 'c', 'd' ]
                             , [ 'd', 'c', 'b', 'a' ]
+                            ]
+                    ]
+        )
+
+
+toTriangular : Test
+toTriangular =
+    Test.test "toTriangular"
+        (\() ->
+            Mesh.combine [ square, triangle ]
+                |> Mesh.toTriangularMesh
+                |> Expect.all
+                    [ TriangularMesh.vertices
+                        >> Array.toList
+                        >> Expect.equal [ 'a', 'b', 'c', 'd', 'e', 'f', 'g' ]
+                    , TriangularMesh.faceIndices
+                        >> Expect.equal
+                            [ ( 0, 1, 2 )
+                            , ( 0, 2, 3 )
+                            , ( 4, 5, 6 )
+                            ]
+                    , TriangularMesh.faceVertices
+                        >> Expect.equal
+                            [ ( 'a', 'b', 'c' )
+                            , ( 'a', 'c', 'd' )
+                            , ( 'e', 'f', 'g' )
                             ]
                     ]
         )
