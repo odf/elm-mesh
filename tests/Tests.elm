@@ -122,18 +122,19 @@ mapVertices =
 
 combine : Test
 combine =
+    let
+        meshes =
+            [ triangle, square, triangle ]
+    in
     Test.test "combine"
         (\() ->
-            Mesh.combine [ triangle, square, triangle ]
+            Mesh.combine meshes
                 |> Expect.all
                     [ Mesh.vertices
                         >> Array.toList
                         >> Expect.equal
-                            (List.concat
-                                [ [ 'e', 'f', 'g' ]
-                                , [ 'a', 'b', 'c', 'd' ]
-                                , [ 'e', 'f', 'g' ]
-                                ]
+                            (List.map (Mesh.vertices >> Array.toList) meshes
+                                |> List.concat
                             )
                     , Mesh.faceIndices
                         >> Expect.equal
@@ -143,10 +144,7 @@ combine =
                             ]
                     , Mesh.faceVertices
                         >> Expect.equal
-                            [ [ 'e', 'f', 'g' ]
-                            , [ 'a', 'b', 'c', 'd' ]
-                            , [ 'e', 'f', 'g' ]
-                            ]
+                            (List.map (Mesh.vertices >> Array.toList) meshes)
                     ]
         )
 
