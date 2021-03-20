@@ -7,12 +7,14 @@ module Tests exposing
     , fromTriangular
     , joinVertices
     , mapVertices
+    , neighbors
     , subdivide
     , toTriangular
     , withNormals
     )
 
 import Array
+import Dict
 import Expect
 import Math.Vector3 exposing (Vec3, vec3)
 import Mesh exposing (Mesh)
@@ -131,6 +133,21 @@ edgeVertices =
                     , ( 'a', 'd' )
                     , ( 'b', 'c' )
                     , ( 'c', 'd' )
+                    ]
+        )
+
+
+neighbors : Test
+neighbors =
+    Test.test "neighbors"
+        (\() ->
+            Mesh.neighbors square
+                |> Dict.toList
+                |> Expect.equal
+                    [ ( 0, [ 1, 3 ] )
+                    , ( 1, [ 0, 2 ] )
+                    , ( 2, [ 1, 3 ] )
+                    , ( 3, [ 0, 2 ] )
                     ]
         )
 

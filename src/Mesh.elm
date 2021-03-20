@@ -11,6 +11,7 @@ module Mesh exposing
     , indexed
     , joinVertices
     , mapVertices
+    , neighbors
     , subdivide
     , toTriangularMesh
     , vertex
@@ -19,7 +20,7 @@ module Mesh exposing
     )
 
 import Array exposing (Array)
-import Dict
+import Dict exposing (Dict)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Set
 import TriangularMesh exposing (TriangularMesh)
@@ -128,6 +129,21 @@ edgeVertices mesh =
             Maybe.map2 Tuple.pair (vertex i mesh) (vertex j mesh)
     in
     List.filterMap toEdge (edgeIndices mesh)
+
+
+neighbors : Mesh vertex -> Dict Int (List Int)
+neighbors mesh =
+    let
+        insert key =
+            Maybe.withDefault Set.empty
+                >> Set.insert key
+                >> Just
+
+        addEdge ( i, j ) =
+            Dict.update i (insert j) >> Dict.update j (insert i)
+    in
+    List.foldl addEdge Dict.empty (edgeIndices mesh)
+        |> Dict.map (\_ s -> Set.toList s)
 
 
 mapVertices : (a -> b) -> Mesh a -> Mesh b
