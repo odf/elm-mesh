@@ -8,13 +8,15 @@ module Tests exposing
     , joinVertices
     , mapVertices
     , toTriangular
+    , withNormals
     )
 
 import Array
-import Expect exposing (Expectation)
+import Expect
+import Math.Vector3 exposing (Vec3, vec3)
 import Mesh exposing (Mesh)
 import Test exposing (Test)
-import TriangularMesh exposing (TriangularMesh)
+import TriangularMesh
 
 
 square : Mesh Char
@@ -37,6 +39,33 @@ triangle =
 
         faceIndices =
             [ [ 0, 1, 2 ] ]
+    in
+    Mesh.indexed vertices faceIndices
+
+
+octahedron : Mesh Vec3
+octahedron =
+    let
+        vertices =
+            Array.fromList
+                [ vec3 1 0 0
+                , vec3 0 1 0
+                , vec3 0 0 1
+                , vec3 -1 0 0
+                , vec3 0 -1 0
+                , vec3 0 0 -1
+                ]
+
+        faceIndices =
+            [ [ 0, 1, 2 ]
+            , [ 1, 0, 5 ]
+            , [ 2, 1, 3 ]
+            , [ 0, 2, 4 ]
+            , [ 3, 5, 4 ]
+            , [ 5, 3, 1 ]
+            , [ 4, 5, 0 ]
+            , [ 3, 4, 2 ]
+            ]
     in
     Mesh.indexed vertices faceIndices
 
@@ -227,5 +256,21 @@ fromTriangular =
                             [ [ 'a', 'b', 'c' ]
                             , [ 'a', 'c', 'd' ]
                             ]
+                    ]
+        )
+
+
+withNormals : Test
+withNormals =
+    Test.test "withNormals"
+        (\() ->
+            octahedron
+                |> Mesh.withNormals identity Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.map Tuple.second
+                        >> Expect.equal (Mesh.vertices octahedron)
+                    , Mesh.faceIndices
+                        >> Expect.equal (Mesh.faceIndices octahedron)
                     ]
         )

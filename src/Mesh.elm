@@ -14,9 +14,11 @@ module Mesh exposing
     , toTriangularMesh
     , vertex
     , vertices
+    , withNormals
     )
 
 import Array exposing (Array)
+import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Set
 import TriangularMesh exposing (TriangularMesh)
 
@@ -241,3 +243,50 @@ fromTriangularMesh trimesh =
             TriangularMesh.faceIndices trimesh
                 |> List.map (\( u, v, w ) -> [ u, v, w ])
         }
+
+
+sectorData : Array Vec3 -> List Int -> List { idx : Int, normal : Vec3 }
+sectorData allVertices face =
+    let
+        getPos v =
+            Array.get v allVertices |> Maybe.withDefault (vec3 0 0 0)
+
+        verts =
+            List.map (\v -> { idx = v, pos = getPos v }) face
+
+        compute u v w =
+            { idx = v.idx
+            , normal = Vec3.cross (Vec3.sub w.pos v.pos) (Vec3.sub u.pos v.pos)
+            }
+    in
+    case verts of
+        a :: b :: rest ->
+            List.map3 compute verts (b :: rest ++ [ a ]) (rest ++ [ a, b ])
+
+        _ ->
+            []
+
+
+withNormals : (a -> Vec3) -> (a -> Vec3 -> b) -> Mesh a -> Mesh b
+withNormals toPositionIn toVertexOut meshIn =
+    let
+        verticesIn =
+            vertices meshIn
+
+        positions =
+            Array.map toPositionIn verticesIn
+
+        facesIn =
+            faceIndices meshIn
+
+        allSectorData =
+            List.concatMap (sectorData positions) facesIn
+
+        convertVertex idx v =
+            List.filter (\e -> e.idx == idx) allSectorData
+                |> List.map .normal
+                |> List.foldl Vec3.add (vec3 0 0 0)
+                |> Vec3.normalize
+                |> toVertexOut v
+    in
+    indexed (Array.indexedMap convertVertex verticesIn) facesIn
