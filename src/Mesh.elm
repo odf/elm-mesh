@@ -11,6 +11,7 @@ module Mesh exposing
     , indexed
     , joinVertices
     , mapVertices
+    , subdivide
     , toTriangularMesh
     , vertex
     , vertices
@@ -18,6 +19,7 @@ module Mesh exposing
     )
 
 import Array exposing (Array)
+import Dict
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Set
 import TriangularMesh exposing (TriangularMesh)
@@ -290,3 +292,93 @@ withNormals toPositionIn toVertexOut meshIn =
                 |> toVertexOut v
     in
     indexed (Array.indexedMap convertVertex verticesIn) facesIn
+
+
+getAll : List Int -> Array a -> List a
+getAll indices array =
+    List.filterMap (\i -> Array.get i array) indices
+
+
+centroid : List Vec3 -> Vec3
+centroid points =
+    List.foldl Vec3.add (vec3 0 0 0) points
+        |> Vec3.scale (1 / toFloat (List.length points))
+
+
+cyclicTriples : List Int -> List ( Int, Int, Int )
+cyclicTriples face =
+    case face of
+        a :: b :: rest ->
+            List.map3 (\u v w -> ( u, v, w ))
+                face
+                (b :: rest ++ [ a ])
+                (rest ++ [ a, b ])
+
+        _ ->
+            []
+
+
+subdivide :
+    (vertex -> Bool)
+    -> (vertex -> Vec3)
+    -> (List vertex -> Vec3 -> vertex)
+    -> Mesh vertex
+    -> Mesh vertex
+subdivide isFixed vertexPosition toOutputVertex meshIn =
+    -- TODO move original vertices
+    let
+        verticesIn =
+            vertices meshIn
+
+        positions =
+            Array.map vertexPosition verticesIn
+
+        facesIn =
+            faceIndices meshIn
+
+        allEdges =
+            edgeIndices meshIn
+
+        n =
+            Array.length verticesIn
+
+        m =
+            List.length allEdges
+
+        midPointIndex =
+            List.indexedMap (\i e -> ( e, i + n )) allEdges
+                |> List.concatMap
+                    (\( ( u, v ), i ) -> [ ( ( u, v ), i ), ( ( v, u ), i ) ])
+                |> Dict.fromList
+
+        makeSubFaces i f =
+            cyclicTriples f
+                |> List.map
+                    (\( u, v, w ) ->
+                        [ Dict.get ( u, v ) midPointIndex
+                        , Just v
+                        , Dict.get ( v, w ) midPointIndex
+                        , Just (n + m + i)
+                        ]
+                            |> List.filterMap identity
+                    )
+
+        facesOut =
+            List.indexedMap makeSubFaces facesIn
+                |> List.concat
+
+        makeOutputVertex indices =
+            toOutputVertex
+                (getAll indices verticesIn)
+                (getAll indices positions |> centroid)
+
+        verticesOut =
+            [ List.range 0 (n - 1) |> List.map (\i -> [ i ])
+            , List.map (\( u, v ) -> [ u, v ]) allEdges
+            , facesIn
+            ]
+                |> List.concat
+                |> List.map makeOutputVertex
+                |> Array.fromList
+    in
+    Mesh { vertices = verticesOut, faceIndices = facesOut }

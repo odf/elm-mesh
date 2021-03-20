@@ -7,6 +7,7 @@ module Tests exposing
     , fromTriangular
     , joinVertices
     , mapVertices
+    , subdivide
     , toTriangular
     , withNormals
     )
@@ -272,5 +273,34 @@ withNormals =
                         >> Expect.equal (Mesh.vertices octahedron)
                     , Mesh.faceIndices
                         >> Expect.equal (Mesh.faceIndices octahedron)
+                    ]
+        )
+
+
+subdivide : Test
+subdivide =
+    Test.test "subdivide"
+        (\() ->
+            octahedron
+                |> Mesh.subdivide (\_ -> False) identity (\_ p -> p)
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.length
+                        >> Expect.equal 26
+                    , Mesh.edgeIndices
+                        >> List.length
+                        >> Expect.equal 48
+                    , Mesh.faceIndices
+                        >> List.length
+                        >> Expect.equal 24
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 24 4)
+                    , Mesh.faceIndices
+                        >> List.map (List.filter (\i -> i < 6) >> List.length)
+                        >> Expect.equal (List.repeat 24 1)
+                    , Mesh.faceIndices
+                        >> List.map (List.filter (\i -> i < 18) >> List.length)
+                        >> Expect.equal (List.repeat 24 3)
                     ]
         )
