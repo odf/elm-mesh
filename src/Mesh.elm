@@ -1,6 +1,7 @@
 module Mesh exposing
     ( Mesh
     , combine
+    , deduplicateVertices
     , edgeIndices
     , edgeVertices
     , empty
@@ -9,7 +10,6 @@ module Mesh exposing
     , faces
     , fromTriangularMesh
     , indexed
-    , joinVertices
     , mapVertices
     , neighbors
     , subdivide
@@ -178,8 +178,8 @@ combine meshes =
     Mesh { vertices = vertices_, faceIndices = makeFaces 0 meshes }
 
 
-unique : List a -> List a
-unique list =
+deduplicate : List a -> List a
+deduplicate list =
     let
         unique_ seen xs =
             case xs of
@@ -196,8 +196,8 @@ unique list =
     unique_ [] list
 
 
-position : a -> List a -> Maybe Int
-position item list =
+indexOf : a -> List a -> Maybe Int
+indexOf item list =
     let
         position_ offset xs =
             case xs of
@@ -214,19 +214,19 @@ position item list =
     position_ 0 list
 
 
-joinVertices : Mesh a -> Mesh a
-joinVertices mesh =
+deduplicateVertices : Mesh a -> Mesh a
+deduplicateVertices mesh =
     let
         allVertices =
             vertices mesh
 
         uniqueVertices =
             Array.toList allVertices
-                |> unique
+                |> deduplicate
 
         newIndex i =
             Array.get i allVertices
-                |> Maybe.andThen (\v -> position v uniqueVertices)
+                |> Maybe.andThen (\v -> indexOf v uniqueVertices)
     in
     Mesh
         { vertices = Array.fromList uniqueVertices

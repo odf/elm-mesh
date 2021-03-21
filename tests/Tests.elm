@@ -205,7 +205,7 @@ joinVertices =
                 , [ 'a', 'c', 'd' ]
                 , [ 'd', 'c', 'b', 'a' ]
                 ]
-                |> Mesh.joinVertices
+                |> Mesh.deduplicateVertices
                 |> Expect.all
                     [ Mesh.vertices
                         >> Array.toList
