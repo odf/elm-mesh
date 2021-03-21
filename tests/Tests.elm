@@ -16,7 +16,7 @@ module Tests exposing
 import Array
 import Dict
 import Expect
-import Math.Vector3 exposing (Vec3, vec3)
+import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Mesh exposing (Mesh)
 import Test exposing (Test)
 import TriangularMesh
@@ -323,5 +323,43 @@ subdivide =
                         >> Dict.toList
                         >> List.map (Tuple.second >> List.length)
                         >> Expect.equal (List.repeat 18 4 ++ List.repeat 8 3)
+                    , Mesh.vertices
+                        >> Array.toList
+                        >> List.map
+                            (\p ->
+                                ( 6 * Vec3.getX p
+                                , 6 * Vec3.getY p
+                                , 6 * Vec3.getZ p
+                                )
+                            )
+                        >> List.sort
+                        >> Expect.equalLists
+                            [ ( -6, 0, 0 )
+                            , ( -3, -3, 0 )
+                            , ( -3, 0, -3 )
+                            , ( -3, 0, 3 )
+                            , ( -3, 3, 0 )
+                            , ( -2, -2, -2 )
+                            , ( -2, -2, 2 )
+                            , ( -2, 2, -2 )
+                            , ( -2, 2, 2 )
+                            , ( 0, -6, 0 )
+                            , ( 0, -3, -3 )
+                            , ( 0, -3, 3 )
+                            , ( 0, 0, -6 )
+                            , ( 0, 0, 6 )
+                            , ( 0, 3, -3 )
+                            , ( 0, 3, 3 )
+                            , ( 0, 6, 0 )
+                            , ( 2, -2, -2 )
+                            , ( 2, -2, 2 )
+                            , ( 2, 2, -2 )
+                            , ( 2, 2, 2 )
+                            , ( 3, -3, 0 )
+                            , ( 3, 0, -3 )
+                            , ( 3, 0, 3 )
+                            , ( 3, 3, 0 )
+                            , ( 6, 0, 0 )
+                            ]
                     ]
         )
