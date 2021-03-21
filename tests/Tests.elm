@@ -299,7 +299,7 @@ subdivide =
     Test.test "subdivide"
         (\() ->
             octahedron
-                |> Mesh.subdivide (always False) identity (\_ p -> p)
+                |> Mesh.subdivide identity (\_ position -> position)
                 |> Expect.all
                     [ Mesh.vertices
                         >> Array.length

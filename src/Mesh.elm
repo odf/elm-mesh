@@ -335,19 +335,14 @@ cyclicTriples face =
 
 
 subdivide :
-    (vertex -> Bool)
-    -> (vertex -> Vec3)
+    (vertex -> Vec3)
     -> (List vertex -> Vec3 -> vertex)
     -> Mesh vertex
     -> Mesh vertex
-subdivide isFixed vertexPosition toOutputVertex meshIn =
-    -- TODO move original vertices
+subdivide vertexPosition toOutputVertex meshIn =
     let
         verticesIn =
             vertices meshIn
-
-        positions =
-            Array.map vertexPosition verticesIn
 
         facesIn =
             faceIndices meshIn
@@ -355,14 +350,14 @@ subdivide isFixed vertexPosition toOutputVertex meshIn =
         allEdges =
             edgeIndices meshIn
 
-        n =
+        nrVertices =
             Array.length verticesIn
 
-        m =
+        nrEdges =
             List.length allEdges
 
         midPointIndex =
-            List.indexedMap (\i e -> ( e, i + n )) allEdges
+            List.indexedMap (\i e -> ( e, i + nrVertices )) allEdges
                 |> List.concatMap
                     (\( ( u, v ), i ) -> [ ( ( u, v ), i ), ( ( v, u ), i ) ])
                 |> Dict.fromList
@@ -374,7 +369,7 @@ subdivide isFixed vertexPosition toOutputVertex meshIn =
                         [ Dict.get ( u, v ) midPointIndex
                         , Just v
                         , Dict.get ( v, w ) midPointIndex
-                        , Just (n + m + i)
+                        , Just (nrVertices + nrEdges + i)
                         ]
                             |> List.filterMap identity
                     )
@@ -383,13 +378,16 @@ subdivide isFixed vertexPosition toOutputVertex meshIn =
             List.indexedMap makeSubFaces facesIn
                 |> List.concat
 
+        positions =
+            Array.map vertexPosition verticesIn
+
         makeOutputVertex indices =
             toOutputVertex
                 (getAll indices verticesIn)
                 (getAll indices positions |> centroid)
 
         verticesOut =
-            [ List.range 0 (n - 1) |> List.map (\i -> [ i ])
+            [ List.range 0 (nrVertices - 1) |> List.map List.singleton
             , List.map (\( u, v ) -> [ u, v ]) allEdges
             , facesIn
             ]
