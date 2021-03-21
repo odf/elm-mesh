@@ -12,6 +12,7 @@ module Mesh exposing
     , indexed
     , mapVertices
     , neighbors
+    , subD
     , subdivide
     , toTriangularMesh
     , vertex
@@ -396,3 +397,85 @@ subdivide vertexPosition toOutputVertex meshIn =
                 |> Array.fromList
     in
     Mesh { vertices = verticesOut, faceIndices = facesOut }
+
+
+subD :
+    (vertex -> bool)
+    -> (vertex -> Vec3)
+    -> (List vertex -> Vec3 -> vertex)
+    -> Mesh vertex
+    -> Mesh vertex
+subD isFixed vertexPosition toOutputVertex meshIn =
+    let
+        verticesIn =
+            vertices meshIn
+
+        positionsIn =
+            Array.map vertexPosition verticesIn
+
+        neighborsIn =
+            neighbors meshIn
+
+        nrVertices =
+            Array.length verticesIn
+
+        nrEdges =
+            edgeIndices meshIn |> List.length
+
+        meshSub =
+            subdivide vertexPosition toOutputVertex meshIn
+
+        verticesSub =
+            vertices meshSub
+
+        neighborsSub =
+            neighbors meshSub
+
+        facePoints =
+            Array.toList verticesSub |> List.drop (nrVertices + nrEdges)
+
+        makeEdgePoint i =
+            let
+                parents =
+                    Dict.get i neighborsIn
+                        |> Maybe.withDefault []
+                        |> (\indices -> getAll indices verticesIn)
+
+                position =
+                    Dict.get i neighborsSub
+                        |> Maybe.withDefault []
+                        |> (\indices -> getAll indices verticesSub)
+                        |> List.map vertexPosition
+                        |> centroid
+            in
+            toOutputVertex parents position
+
+        edgePoints =
+            List.range nrVertices (nrVertices + nrEdges - 1)
+                |> List.map makeEdgePoint
+
+        makeVertexPoint i =
+            let
+                parents =
+                    getAll [ i ] verticesIn
+
+                p =
+                    List.map vertexPosition parents |> centroid
+
+                e =
+                    Dict.get i neighborsIn
+                        |> Maybe.withDefault []
+                        |> (\indices -> getAll indices verticesIn)
+                        |> List.map vertexPosition
+                        |> centroid
+            in
+            toOutputVertex parents p
+
+        vertexPoints =
+            List.range 0 (nrVertices - 1)
+                |> List.map makeVertexPoint
+    in
+    Mesh
+        { vertices = Array.fromList (vertexPoints ++ edgePoints ++ facePoints)
+        , faceIndices = faceIndices meshSub
+        }
