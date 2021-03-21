@@ -299,7 +299,7 @@ subdivide =
     Test.test "subdivide"
         (\() ->
             octahedron
-                |> Mesh.subdivide (\_ -> False) identity (\_ p -> p)
+                |> Mesh.subdivide (always False) identity (\_ p -> p)
                 |> Expect.all
                     [ Mesh.vertices
                         >> Array.length
@@ -319,5 +319,9 @@ subdivide =
                     , Mesh.faceIndices
                         >> List.map (List.filter (\i -> i < 18) >> List.length)
                         >> Expect.equal (List.repeat 24 3)
+                    , Mesh.neighbors
+                        >> Dict.toList
+                        >> List.map (Tuple.second >> List.length)
+                        >> Expect.equal (List.repeat 18 4 ++ List.repeat 8 3)
                     ]
         )
