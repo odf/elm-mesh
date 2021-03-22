@@ -1,6 +1,6 @@
 {
     "type": "package",
-    "name": "odf/mesh",
+    "name": "odf/elm-mesh",
     "summary": "Indexed mesh data structure with arbitrary face sizes",
     "license": "Apache-2.0",
     "version": "1.0.0",
