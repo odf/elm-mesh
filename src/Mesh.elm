@@ -410,9 +410,6 @@ subD isFixed vertexPosition toOutputVertex meshIn =
         verticesIn =
             vertices meshIn
 
-        positionsIn =
-            Array.map vertexPosition verticesIn
-
         neighborsIn =
             neighbors meshIn
 
@@ -450,10 +447,6 @@ subD isFixed vertexPosition toOutputVertex meshIn =
             in
             toOutputVertex parents position
 
-        edgePoints =
-            List.range nrVertices (nrVertices + nrEdges - 1)
-                |> List.map makeEdgePoint
-
         makeVertexPoint i =
             let
                 parents =
@@ -462,14 +455,37 @@ subD isFixed vertexPosition toOutputVertex meshIn =
                 p =
                     List.map vertexPosition parents |> centroid
 
-                e =
+                n =
+                    Dict.get i neighborsIn
+                        |> Maybe.withDefault []
+                        |> List.length
+                        |> toFloat
+
+                m =
                     Dict.get i neighborsIn
                         |> Maybe.withDefault []
                         |> (\indices -> getAll indices verticesIn)
                         |> List.map vertexPosition
                         |> centroid
+
+                e =
+                    Dict.get i neighborsSub
+                        |> Maybe.withDefault []
+                        |> (\indices -> getAll indices verticesSub)
+                        |> List.map vertexPosition
+                        |> centroid
+
+                position =
+                    centroid [ p, m ]
+                        |> Vec3.add (Vec3.scale 2 e)
+                        |> Vec3.add (Vec3.scale (n - 3) p)
+                        |> Vec3.scale (1 / n)
             in
-            toOutputVertex parents p
+            toOutputVertex parents position
+
+        edgePoints =
+            List.range nrVertices (nrVertices + nrEdges - 1)
+                |> List.map makeEdgePoint
 
         vertexPoints =
             List.range 0 (nrVertices - 1)
