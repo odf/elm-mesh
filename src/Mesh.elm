@@ -400,7 +400,7 @@ subdivide vertexPosition toOutputVertex meshIn =
 
 
 subD :
-    (vertex -> bool)
+    (vertex -> Bool)
     -> (vertex -> Vec3)
     -> (List vertex -> Vec3 -> vertex)
     -> Mesh vertex
@@ -428,9 +428,6 @@ subD isFixed vertexPosition toOutputVertex meshIn =
         neighborsSub =
             neighbors meshSub
 
-        facePoints =
-            Array.toList verticesSub |> List.drop (nrVertices + nrEdges)
-
         makeEdgePoint i =
             let
                 parents =
@@ -449,39 +446,52 @@ subD isFixed vertexPosition toOutputVertex meshIn =
 
         makeVertexPoint i =
             let
+                keepFixed =
+                    Array.get i verticesIn
+                        |> Maybe.map isFixed
+                        |> Maybe.withDefault False
+
                 parents =
                     getAll [ i ] verticesIn
 
                 p =
                     List.map vertexPosition parents |> centroid
-
-                n =
-                    Dict.get i neighborsIn
-                        |> Maybe.withDefault []
-                        |> List.length
-                        |> toFloat
-
-                m =
-                    Dict.get i neighborsIn
-                        |> Maybe.withDefault []
-                        |> (\indices -> getAll indices verticesIn)
-                        |> List.map vertexPosition
-                        |> centroid
-
-                e =
-                    Dict.get i neighborsSub
-                        |> Maybe.withDefault []
-                        |> (\indices -> getAll indices verticesSub)
-                        |> List.map vertexPosition
-                        |> centroid
-
-                position =
-                    centroid [ p, m ]
-                        |> Vec3.add (Vec3.scale 2 e)
-                        |> Vec3.add (Vec3.scale (n - 3) p)
-                        |> Vec3.scale (1 / n)
             in
-            toOutputVertex parents position
+            if keepFixed then
+                toOutputVertex parents p
+
+            else
+                let
+                    n =
+                        Dict.get i neighborsIn
+                            |> Maybe.withDefault []
+                            |> List.length
+                            |> toFloat
+
+                    m =
+                        Dict.get i neighborsIn
+                            |> Maybe.withDefault []
+                            |> (\indices -> getAll indices verticesIn)
+                            |> List.map vertexPosition
+                            |> centroid
+
+                    e =
+                        Dict.get i neighborsSub
+                            |> Maybe.withDefault []
+                            |> (\indices -> getAll indices verticesSub)
+                            |> List.map vertexPosition
+                            |> centroid
+
+                    position =
+                        centroid [ p, m ]
+                            |> Vec3.add (Vec3.scale 2 e)
+                            |> Vec3.add (Vec3.scale (n - 3) p)
+                            |> Vec3.scale (1 / n)
+                in
+                toOutputVertex parents position
+
+        facePoints =
+            Array.toList verticesSub |> List.drop (nrVertices + nrEdges)
 
         edgePoints =
             List.range nrVertices (nrVertices + nrEdges - 1)
