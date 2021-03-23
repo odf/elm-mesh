@@ -413,98 +413,16 @@ subD isFixed vertexPosition toOutputVertex meshIn =
         verticesIn =
             vertices meshIn
 
-        neighborsIn =
-            neighbors meshIn
-
         nrVertices =
             Array.length verticesIn
 
-        nrEdges =
-            edgeIndices meshIn |> List.length
+        positions =
+            Array.map vertexPosition verticesIn
 
-        meshSub =
-            subdivide vertexPosition toOutputVertex meshIn
+        makeOutputVertex indices pos =
+            toOutputVertex (getAll indices verticesIn) pos
 
-        verticesSub =
-            vertices meshSub
-
-        neighborsSub =
-            neighbors meshSub
-
-        makeEdgePoint i =
-            let
-                parents =
-                    Dict.get i neighborsIn
-                        |> Maybe.withDefault []
-                        |> (\indices -> getAll indices verticesIn)
-
-                position =
-                    Dict.get i neighborsSub
-                        |> Maybe.withDefault []
-                        |> (\indices -> getAll indices verticesSub)
-                        |> List.map vertexPosition
-                        |> centroid
-            in
-            toOutputVertex parents position
-
-        makeVertexPoint i =
-            let
-                keepFixed =
-                    Array.get i verticesIn
-                        |> Maybe.map isFixed
-                        |> Maybe.withDefault False
-
-                parents =
-                    getAll [ i ] verticesIn
-
-                p =
-                    List.map vertexPosition parents |> centroid
-            in
-            if keepFixed then
-                toOutputVertex parents p
-
-            else
-                let
-                    n =
-                        Dict.get i neighborsIn
-                            |> Maybe.withDefault []
-                            |> List.length
-                            |> toFloat
-
-                    m =
-                        Dict.get i neighborsIn
-                            |> Maybe.withDefault []
-                            |> (\indices -> getAll indices verticesIn)
-                            |> List.map vertexPosition
-                            |> centroid
-
-                    e =
-                        Dict.get i neighborsSub
-                            |> Maybe.withDefault []
-                            |> (\indices -> getAll indices verticesSub)
-                            |> List.map vertexPosition
-                            |> centroid
-
-                    position =
-                        centroid [ p, m ]
-                            |> Vec3.add (Vec3.scale 2 e)
-                            |> Vec3.add (Vec3.scale (n - 3) p)
-                            |> Vec3.scale (1 / n)
-                in
-                toOutputVertex parents position
-
-        facePoints =
-            Array.toList verticesSub |> List.drop (nrVertices + nrEdges)
-
-        edgePoints =
-            List.range nrVertices (nrVertices + nrEdges - 1)
-                |> List.map makeEdgePoint
-
-        vertexPoints =
-            List.range 0 (nrVertices - 1)
-                |> List.map makeVertexPoint
+        subFaceIndices =
+            subdivisionFaces meshIn
     in
-    Mesh
-        { vertices = Array.fromList (vertexPoints ++ edgePoints ++ facePoints)
-        , faceIndices = faceIndices meshSub
-        }
+    meshIn
