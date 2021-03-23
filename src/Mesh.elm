@@ -335,24 +335,14 @@ cyclicTriples face =
             []
 
 
-subdivide :
-    (vertex -> Vec3)
-    -> (List vertex -> Vec3 -> vertex)
-    -> Mesh vertex
-    -> Mesh vertex
-subdivide vertexPosition toOutputVertex meshIn =
+subdivisionFaces : Mesh vertex -> List (List Int)
+subdivisionFaces mesh =
     let
-        verticesIn =
-            vertices meshIn
-
-        facesIn =
-            faceIndices meshIn
-
         allEdges =
-            edgeIndices meshIn
+            edgeIndices mesh
 
         nrVertices =
-            Array.length verticesIn
+            Array.length (vertices mesh)
 
         nrEdges =
             List.length allEdges
@@ -374,10 +364,23 @@ subdivide vertexPosition toOutputVertex meshIn =
                         ]
                             |> List.filterMap identity
                     )
+    in
+    List.indexedMap makeSubFaces (faceIndices mesh)
+        |> List.concat
 
-        facesOut =
-            List.indexedMap makeSubFaces facesIn
-                |> List.concat
+
+subdivide :
+    (vertex -> Vec3)
+    -> (List vertex -> Vec3 -> vertex)
+    -> Mesh vertex
+    -> Mesh vertex
+subdivide vertexPosition toOutputVertex meshIn =
+    let
+        verticesIn =
+            vertices meshIn
+
+        nrVertices =
+            Array.length verticesIn
 
         positions =
             Array.map vertexPosition verticesIn
@@ -389,14 +392,14 @@ subdivide vertexPosition toOutputVertex meshIn =
 
         verticesOut =
             [ List.range 0 (nrVertices - 1) |> List.map List.singleton
-            , List.map (\( u, v ) -> [ u, v ]) allEdges
-            , facesIn
+            , edgeIndices meshIn |> List.map (\( u, v ) -> [ u, v ])
+            , faceIndices meshIn
             ]
                 |> List.concat
                 |> List.map makeOutputVertex
                 |> Array.fromList
     in
-    Mesh { vertices = verticesOut, faceIndices = facesOut }
+    Mesh { vertices = verticesOut, faceIndices = subdivisionFaces meshIn }
 
 
 subD :
