@@ -294,12 +294,19 @@ withNormals =
         )
 
 
+linearCombination : List ( Float, Vec3 ) -> Vec3
+linearCombination =
+    List.foldl
+        (\( coeff, point ) -> Vec3.scale coeff point |> Vec3.add)
+        (vec3 0 0 0)
+
+
 subdivide : Test
 subdivide =
     Test.test "subdivide"
         (\() ->
             octahedron
-                |> Mesh.subdivide identity (\_ position -> position)
+                |> Mesh.subdivide linearCombination
                 |> Expect.all
                     [ Mesh.vertices
                         >> Array.length

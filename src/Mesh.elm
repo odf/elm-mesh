@@ -369,12 +369,8 @@ subdivisionFaces mesh =
         |> List.concat
 
 
-subdivide :
-    (vertex -> Vec3)
-    -> (List vertex -> Vec3 -> vertex)
-    -> Mesh vertex
-    -> Mesh vertex
-subdivide vertexPosition toOutputVertex meshIn =
+subdivide : (List ( Float, vertex ) -> vertex) -> Mesh vertex -> Mesh vertex
+subdivide combineVertices meshIn =
     let
         verticesIn =
             vertices meshIn
@@ -382,13 +378,14 @@ subdivide vertexPosition toOutputVertex meshIn =
         nrVertices =
             Array.length verticesIn
 
-        positions =
-            Array.map vertexPosition verticesIn
-
         makeOutputVertex indices =
-            toOutputVertex
-                (getAll indices verticesIn)
-                (getAll indices positions |> centroid)
+            let
+                coeff =
+                    List.length indices |> toFloat |> (/) 1
+            in
+            getAll indices verticesIn
+                |> List.map (Tuple.pair coeff)
+                |> combineVertices
 
         verticesOut =
             [ List.range 0 (nrVertices - 1) |> List.map List.singleton
