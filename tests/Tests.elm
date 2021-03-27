@@ -8,6 +8,7 @@ module Tests exposing
     , joinVertices
     , mapVertices
     , neighbors
+    , subD
     , subdivide
     , toTriangular
     , withNormals
@@ -299,6 +300,7 @@ subdivide =
     Test.test "subdivide"
         (\() ->
             octahedron
+                |> Mesh.mapVertices (Vec3.scale 6)
                 |> Mesh.subdivide identity (\_ position -> position)
                 |> Expect.all
                     [ Mesh.vertices
@@ -326,12 +328,7 @@ subdivide =
                     , Mesh.vertices
                         >> Array.toList
                         >> List.map
-                            (\p ->
-                                ( 6 * Vec3.getX p
-                                , 6 * Vec3.getY p
-                                , 6 * Vec3.getZ p
-                                )
-                            )
+                            (\p -> ( Vec3.getX p, Vec3.getY p, Vec3.getZ p ))
                         >> List.sort
                         >> Expect.equalLists
                             [ ( -6, 0, 0 )
@@ -360,6 +357,60 @@ subdivide =
                             , ( 3, 0, 3 )
                             , ( 3, 3, 0 )
                             , ( 6, 0, 0 )
+                            ]
+                    ]
+        )
+
+
+subD : Test
+subD =
+    Test.test "subD"
+        (\() ->
+            let
+                baseMesh =
+                    octahedron
+
+                simpleSubdivision =
+                    Mesh.subdivide identity (\_ position -> position) baseMesh
+            in
+            baseMesh
+                |> Mesh.mapVertices (Vec3.scale 12)
+                |> Mesh.subD (always False) identity (\_ position -> position)
+                |> Expect.all
+                    [ Mesh.faceIndices
+                        >> Expect.equal (Mesh.faceIndices simpleSubdivision)
+                    , Mesh.vertices
+                        >> Array.toList
+                        >> List.map
+                            (\p -> ( Vec3.getX p, Vec3.getY p, Vec3.getZ p ))
+                        >> List.sort
+                        >> Expect.equalLists
+                            [ ( -7, 0, 0 )
+                            , ( -5, -5, 0 )
+                            , ( -5, 0, -5 )
+                            , ( -5, 0, 5 )
+                            , ( -5, 5, 0 )
+                            , ( -4, -4, -4 )
+                            , ( -4, -4, 4 )
+                            , ( -4, 4, -4 )
+                            , ( -4, 4, 4 )
+                            , ( 0, -7, 0 )
+                            , ( 0, -5, -5 )
+                            , ( 0, -5, 5 )
+                            , ( 0, 0, -7 )
+                            , ( 0, 0, 7 )
+                            , ( 0, 5, -5 )
+                            , ( 0, 5, 5 )
+                            , ( 0, 7, 0 )
+                            , ( 4, -4, -4 )
+                            , ( 4, -4, 4 )
+                            , ( 4, 4, -4 )
+                            , ( 4, 4, 4 )
+                            , ( 5, -5, 0 )
+                            , ( 5, 0, -5 )
+                            , ( 5, 0, 5 )
+                            , ( 5, 5, 0 )
+                            , ( 7, 0, 0 )
                             ]
                     ]
         )
