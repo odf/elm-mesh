@@ -31,6 +31,7 @@ empty =
                 |> Expect.all
                     [ Topology.vertices >> Expect.equal []
                     , Topology.edges >> Expect.equal []
+                    , Topology.faces >> Expect.equal []
                     ]
         )
 
@@ -59,6 +60,18 @@ goodFaceList =
                             , ( 3, 4 )
                             , ( 3, 5 )
                             , ( 4, 5 )
+                            ]
+                    , Topology.faces
+                        >> List.sort
+                        >> Expect.equal
+                            [ [ 0, 1, 2 ]
+                            , [ 0, 2, 4 ]
+                            , [ 0, 4, 5 ]
+                            , [ 0, 5, 1 ]
+                            , [ 1, 3, 2 ]
+                            , [ 1, 5, 3 ]
+                            , [ 2, 3, 4 ]
+                            , [ 3, 5, 4 ]
                             ]
                     ]
         )

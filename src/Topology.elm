@@ -2,6 +2,7 @@ module Topology exposing
     ( Mesh
     , edges
     , empty
+    , faces
     , fromOrientedFaces
     , vertices
     )
@@ -89,10 +90,10 @@ cyclicPairs indices =
 
 
 fromOrientedFaces : List (List comparable) -> Result String (Mesh comparable)
-fromOrientedFaces faces =
+fromOrientedFaces faceLists =
     let
         orientedEdgeLists =
-            List.map cyclicPairs faces
+            List.map cyclicPairs faceLists
 
         orientedEdges =
             List.concat orientedEdgeLists
@@ -144,3 +145,44 @@ vertices (HalfEdgeMesh mesh) =
 edges : Mesh comparable -> List ( comparable, comparable )
 edges (HalfEdgeMesh mesh) =
     Dict.keys mesh.next |> List.filter (\( from, to ) -> from <= to)
+
+
+faceVertices : OrientedEdge comparable -> Mesh comparable -> List comparable
+faceVertices start (HalfEdgeMesh mesh) =
+    let
+        step vertsIn current =
+            let
+                vertsOut =
+                    Tuple.first current :: vertsIn
+            in
+            case Dict.get current mesh.next of
+                Just next ->
+                    if next == start then
+                        vertsOut
+
+                    else
+                        step vertsOut next
+
+                Nothing ->
+                    []
+    in
+    step [] start |> List.reverse
+
+
+canonicalFace : List comparable -> List comparable
+canonicalFace list =
+    let
+        argmin =
+            List.indexedMap (\i k -> (k, i)) list
+                |> List.minimum
+                |> Maybe.map Tuple.second
+                |> Maybe.withDefault 0
+    in
+    List.drop argmin list ++ List.take argmin list
+
+
+faces : Mesh comparable -> List (List comparable)
+faces (HalfEdgeMesh mesh) =
+    Dict.values mesh.fromFace
+        |> List.map (\start -> faceVertices start (HalfEdgeMesh mesh))
+        |> List.map canonicalFace
