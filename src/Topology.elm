@@ -1,110 +1,134 @@
 module Topology exposing
     ( Mesh
     , empty
+    , fromOrientedFaces
     )
 
-import Array exposing (Array)
-import Dict
-import Mesh exposing (vertices)
-import Set
+import Dict exposing (Dict)
 
 
-type HalfEdge
-    = HalfEdge
-        { twin : Int
-        , next : Int
-        , vertex : Vertex
-        , edge : Edge
-        , face : Face
+type Mesh comparable
+    = HalfEdgeMesh
+        { next : Dict (DirectedEdge comparable) (DirectedEdge comparable)
+        , fromVertex : Dict comparable (DirectedEdge comparable)
+        , fromFace : Dict FaceKey (DirectedEdge comparable)
+        , toFace : Dict (DirectedEdge comparable) FaceKey
         }
 
 
-type Vertex
-    = Vertex HalfEdge
+type alias DirectedEdge comparable =
+    ( comparable, comparable )
 
 
-type Edge
-    = Edge HalfEdge
+type alias FaceKey =
+    Int
 
 
-type Face
-    = Face HalfEdge
+opposite : DirectedEdge comparable -> DirectedEdge comparable
+opposite ( from, to ) =
+    ( to, from )
 
 
-type Mesh
-    = Mesh
-        { halfEdges : Array HalfEdge
-        , vertices : Array Vertex
-        , edges : Array Edge
-        , faces : Array Face
-        }
+edge : DirectedEdge comparable -> ( comparable, comparable )
+edge ( from, to ) =
+    if from <= to then
+        ( from, to )
+
+    else
+        ( to, from )
 
 
-empty : Mesh
+startVertex : DirectedEdge comparable -> comparable
+startVertex ( from, _ ) =
+    from
+
+
+endVertex : DirectedEdge comparable -> comparable
+endVertex ( _, to ) =
+    to
+
+
+empty : Mesh comparable
 empty =
-    Mesh
-        { halfEdges = Array.empty
-        , vertices = Array.empty
-        , edges = Array.empty
-        , faces = Array.empty
+    HalfEdgeMesh
+        { next = Dict.empty
+        , fromVertex = Dict.empty
+        , fromFace = Dict.empty
+        , toFace = Dict.empty
         }
 
 
-hasDuplicates : List comparable -> Bool
-hasDuplicates =
+findDuplicate : List comparable -> Maybe comparable
+findDuplicate =
     let
-        hasDupes list =
+        findDupe list =
             case list of
-                a :: b :: rest ->
-                    a == b || hasDupes (b :: rest)
+                first :: second :: rest ->
+                    if first == second then
+                        Just first
+
+                    else
+                        findDupe (second :: rest)
 
                 _ ->
-                    False
+                    Nothing
     in
-    List.sort >> hasDupes
+    List.sort >> findDupe
 
 
-fromOrientedFaces : List (List Int) -> Result String Mesh
+cyclicPairs : List a -> List ( a, a )
+cyclicPairs indices =
+    case indices of
+        first :: rest ->
+            List.map2 Tuple.pair indices (rest ++ [ first ])
+
+        _ ->
+            []
+
+
+fromOrientedFaces : List (List comparable) -> Result String (Mesh comparable)
 fromOrientedFaces faces =
     let
-        vertices =
-            List.concat faces |> Set.fromList |> Set.toList
-
-        cyclicPairs indices =
-            case indices of
-                a :: rest ->
-                    List.map2 Tuple.pair indices (rest ++ [ a ])
-
-                _ ->
-                    []
-
-        halfEdgeLists =
+        directedEdgeLists =
             List.map cyclicPairs faces
 
-        halfEdgeOrder =
-            List.concat halfEdgeLists
+        directedEdges =
+            List.concat directedEdgeLists
 
-        halfEdgeIndices =
-            List.indexedMap (\i he -> ( he, i )) halfEdgeOrder
+        next =
+            List.concatMap cyclicPairs directedEdgeLists |> Dict.fromList
+
+        fromVertex =
+            directedEdges
+                |> List.map (\( from, to ) -> ( from, ( from, to ) ))
                 |> Dict.fromList
 
-        isManifold =
-            List.all
-                (\( a, b ) -> Dict.member ( b, a ) halfEdgeIndices)
-                halfEdgeOrder
-
-        nextHalfEdge =
-            List.concatMap cyclicPairs halfEdgeLists
+        toFace =
+            directedEdgeLists
+                |> List.indexedMap (\i -> List.map (\e -> ( e, i )))
+                |> List.concat
                 |> Dict.fromList
+
+        fromFace =
+            Dict.toList toFace
+                |> List.map (\( key, val ) -> ( val, key ))
+                |> Dict.fromList
+
+        seen e =
+            Dict.member e toFace
     in
-    if vertices /= List.range 0 (List.length vertices - 1) then
-        Err "vertex numbers must be consecutive, starting at 0"
-
-    else if hasDuplicates halfEdgeLists then
+    if findDuplicate directedEdges /= Nothing then
         Err "each oriented edge must be unique"
 
-    else if not isManifold then
+    else if List.any (opposite >> seen >> not) directedEdges then
         Err "each oriented edge must have a reverse"
 
     else
-        Err "not yet implemented"
+        Ok
+            (HalfEdgeMesh
+                { next = next
+                , fromVertex = fromVertex
+                , fromFace = fromFace
+                , toFace = toFace
+                }
+            )
