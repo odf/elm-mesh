@@ -1,4 +1,4 @@
-module Tests exposing
+module MeshTests exposing
     ( combine
     , edgeVertices
     , empty
