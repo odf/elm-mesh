@@ -9,14 +9,14 @@ import Dict exposing (Dict)
 
 type Mesh comparable
     = HalfEdgeMesh
-        { next : Dict (DirectedEdge comparable) (DirectedEdge comparable)
-        , fromVertex : Dict comparable (DirectedEdge comparable)
-        , fromFace : Dict FaceKey (DirectedEdge comparable)
-        , toFace : Dict (DirectedEdge comparable) FaceKey
+        { next : Dict (OrientedEdge comparable) (OrientedEdge comparable)
+        , fromVertex : Dict comparable (OrientedEdge comparable)
+        , fromFace : Dict FaceKey (OrientedEdge comparable)
+        , toFace : Dict (OrientedEdge comparable) FaceKey
         }
 
 
-type alias DirectedEdge comparable =
+type alias OrientedEdge comparable =
     ( comparable, comparable )
 
 
@@ -24,12 +24,12 @@ type alias FaceKey =
     Int
 
 
-opposite : DirectedEdge comparable -> DirectedEdge comparable
+opposite : OrientedEdge comparable -> OrientedEdge comparable
 opposite ( from, to ) =
     ( to, from )
 
 
-edge : DirectedEdge comparable -> ( comparable, comparable )
+edge : OrientedEdge comparable -> ( comparable, comparable )
 edge ( from, to ) =
     if from <= to then
         ( from, to )
@@ -38,12 +38,12 @@ edge ( from, to ) =
         ( to, from )
 
 
-startVertex : DirectedEdge comparable -> comparable
+startVertex : OrientedEdge comparable -> comparable
 startVertex ( from, _ ) =
     from
 
 
-endVertex : DirectedEdge comparable -> comparable
+endVertex : OrientedEdge comparable -> comparable
 endVertex ( _, to ) =
     to
 
@@ -89,22 +89,22 @@ cyclicPairs indices =
 fromOrientedFaces : List (List comparable) -> Result String (Mesh comparable)
 fromOrientedFaces faces =
     let
-        directedEdgeLists =
+        orientedEdgeLists =
             List.map cyclicPairs faces
 
-        directedEdges =
-            List.concat directedEdgeLists
+        orientedEdges =
+            List.concat orientedEdgeLists
 
         next =
-            List.concatMap cyclicPairs directedEdgeLists |> Dict.fromList
+            List.concatMap cyclicPairs orientedEdgeLists |> Dict.fromList
 
         fromVertex =
-            directedEdges
+            orientedEdges
                 |> List.map (\( from, to ) -> ( from, ( from, to ) ))
                 |> Dict.fromList
 
         toFace =
-            directedEdgeLists
+            orientedEdgeLists
                 |> List.indexedMap (\i -> List.map (\e -> ( e, i )))
                 |> List.concat
                 |> Dict.fromList
@@ -117,10 +117,10 @@ fromOrientedFaces faces =
         seen e =
             Dict.member e toFace
     in
-    if findDuplicate directedEdges /= Nothing then
+    if findDuplicate orientedEdges /= Nothing then
         Err "each oriented edge must be unique"
 
-    else if List.any (opposite >> seen >> not) directedEdges then
+    else if List.any (opposite >> seen >> not) orientedEdges then
         Err "each oriented edge must have a reverse"
 
     else
