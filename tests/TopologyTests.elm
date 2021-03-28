@@ -1,6 +1,7 @@
 module TopologyTests exposing
-    ( orientationMismatch
+    ( empty
     , goodFaceList
+    , orientationMismatch
     , unpairedOrientedEdge
     )
 
@@ -22,13 +23,44 @@ octahedronFaces =
     ]
 
 
+empty : Test
+empty =
+    Test.test "empty"
+        (\() ->
+            Topology.empty
+                |> Expect.all
+                    [ Topology.vertices >> Expect.equal []
+                    , Topology.edges >> Expect.equal []
+                    ]
+        )
+
+
 goodFaceList : Test
 goodFaceList =
     Test.test "goodFaceList"
         (\() ->
             octahedronFaces
                 |> Topology.fromOrientedFaces
-                |> Expect.ok
+                |> Result.withDefault Topology.empty
+                |> Expect.all
+                    [ Topology.vertices
+                        >> Expect.equal (List.range 0 5)
+                    , Topology.edges
+                        >> Expect.equal
+                            [ ( 0, 1 )
+                            , ( 0, 2 )
+                            , ( 0, 4 )
+                            , ( 0, 5 )
+                            , ( 1, 2 )
+                            , ( 1, 3 )
+                            , ( 1, 5 )
+                            , ( 2, 3 )
+                            , ( 2, 4 )
+                            , ( 3, 4 )
+                            , ( 3, 5 )
+                            , ( 4, 5 )
+                            ]
+                    ]
         )
 
 

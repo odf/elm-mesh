@@ -1,7 +1,9 @@
 module Topology exposing
     ( Mesh
+    , edges
     , empty
     , fromOrientedFaces
+    , vertices
     )
 
 import Dict exposing (Dict)
@@ -132,3 +134,13 @@ fromOrientedFaces faces =
                 , toFace = toFace
                 }
             )
+
+
+vertices : Mesh comparable -> List comparable
+vertices (HalfEdgeMesh mesh) =
+    Dict.keys mesh.fromVertex
+
+
+edges : Mesh comparable -> List ( comparable, comparable )
+edges (HalfEdgeMesh mesh) =
+    Dict.keys mesh.next |> List.filter (\( from, to ) -> from <= to)
