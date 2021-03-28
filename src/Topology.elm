@@ -4,6 +4,7 @@ module Topology exposing
     , empty
     , faces
     , fromOrientedFaces
+    , neighbors
     , vertices
     )
 
@@ -147,6 +148,18 @@ edges (HalfEdgeMesh mesh) =
     Dict.keys mesh.next |> List.filter (\( from, to ) -> from <= to)
 
 
+canonicalCircular : List comparable -> List comparable
+canonicalCircular list =
+    let
+        argmin =
+            List.indexedMap (\i k -> ( k, i )) list
+                |> List.minimum
+                |> Maybe.map Tuple.second
+                |> Maybe.withDefault 0
+    in
+    List.drop argmin list ++ List.take argmin list
+
+
 faceVertices : OrientedEdge comparable -> Mesh comparable -> List comparable
 faceVertices start (HalfEdgeMesh mesh) =
     let
@@ -169,20 +182,38 @@ faceVertices start (HalfEdgeMesh mesh) =
     step [] start |> List.reverse
 
 
-canonicalFace : List comparable -> List comparable
-canonicalFace list =
-    let
-        argmin =
-            List.indexedMap (\i k -> (k, i)) list
-                |> List.minimum
-                |> Maybe.map Tuple.second
-                |> Maybe.withDefault 0
-    in
-    List.drop argmin list ++ List.take argmin list
-
-
 faces : Mesh comparable -> List (List comparable)
 faces (HalfEdgeMesh mesh) =
     Dict.values mesh.fromFace
         |> List.map (\start -> faceVertices start (HalfEdgeMesh mesh))
-        |> List.map canonicalFace
+        |> List.map canonicalCircular
+
+
+vertexNeighbors : OrientedEdge comparable -> Mesh comparable -> List comparable
+vertexNeighbors start (HalfEdgeMesh mesh) =
+    let
+        step vertsIn current =
+            let
+                vertsOut =
+                    Tuple.second current :: vertsIn
+            in
+            case Dict.get (opposite current) mesh.next of
+                Just next ->
+                    if next == start then
+                        vertsOut
+
+                    else
+                        step vertsOut next
+
+                Nothing ->
+                    []
+    in
+    step [] start
+
+
+neighbors : comparable -> Mesh comparable -> List comparable
+neighbors vertex (HalfEdgeMesh mesh) =
+    Dict.get vertex mesh.fromVertex
+        |> Maybe.map (\start -> vertexNeighbors start (HalfEdgeMesh mesh))
+        |> Maybe.withDefault []
+        |> canonicalCircular

@@ -73,6 +73,17 @@ goodFaceList =
                             , [ 2, 3, 4 ]
                             , [ 3, 5, 4 ]
                             ]
+                    , \mesh ->
+                        Topology.vertices mesh
+                            |> List.map (\v -> ( v, Topology.neighbors v mesh ))
+                            |> Expect.equal
+                                [ ( 0, [ 1, 2, 4, 5 ] )
+                                , ( 1, [ 0, 5, 3, 2 ] )
+                                , ( 2, [ 0, 1, 3, 4 ] )
+                                , ( 3, [ 1, 5, 4, 2 ] )
+                                , ( 4, [ 0, 2, 3, 5 ] )
+                                , ( 5, [ 0, 4, 3, 1 ] )
+                                ]
                     ]
         )
 
