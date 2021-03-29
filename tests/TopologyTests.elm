@@ -1,13 +1,17 @@
 module TopologyTests exposing
     ( empty
+    , fromTriangular
     , goodFaceList
     , orientationMismatch
+    , toTriangular
     , unpairedOrientedEdge
     )
 
+import Array
 import Expect
 import Test exposing (Test)
 import Topology
+import TriangularMesh
 
 
 octahedronFaces : List (List Int)
@@ -108,4 +112,70 @@ orientationMismatch =
                 |> (::) [ 0, 2, 1 ]
                 |> Topology.fromOrientedFaces
                 |> Expect.err
+        )
+
+
+toTriangular : Test
+toTriangular =
+    Test.test "toTriangular"
+        (\() ->
+            [ [ 'a', 'b', 'c', 'd' ], [ 'd', 'c', 'b', 'a' ] ]
+                |> Topology.fromOrientedFaces
+                |> Result.withDefault Topology.empty
+                |> Topology.toTriangularMesh
+                |> Expect.all
+                    [ TriangularMesh.vertices
+                        >> Array.toList
+                        >> Expect.equal [ 'a', 'b', 'c', 'd' ]
+                    , TriangularMesh.faceIndices
+                        >> Expect.equal
+                            [ ( 0, 1, 2 )
+                            , ( 0, 2, 3 )
+                            , ( 0, 3, 2 )
+                            , ( 0, 2, 1 )
+                            ]
+                    , TriangularMesh.faceVertices
+                        >> Expect.equal
+                            [ ( 'a', 'b', 'c' )
+                            , ( 'a', 'c', 'd' )
+                            , ( 'a', 'd', 'c' )
+                            , ( 'a', 'c', 'b' )
+                            ]
+                    ]
+        )
+
+
+fromTriangular : Test
+fromTriangular =
+    Test.test "fromTriangular"
+        (\() ->
+            TriangularMesh.indexed
+                (Array.fromList [ 'a', 'b', 'c', 'd', 'e', 'f' ])
+                [ ( 0, 1, 2 )
+                , ( 1, 0, 5 )
+                , ( 2, 1, 3 )
+                , ( 0, 2, 4 )
+                , ( 3, 5, 4 )
+                , ( 5, 3, 1 )
+                , ( 4, 5, 0 )
+                , ( 3, 4, 2 )
+                ]
+                |> Topology.fromTriangularMesh
+                |> Result.withDefault Topology.empty
+                |> Expect.all
+                    [ Topology.vertices
+                        >> Expect.equal [ 'a', 'b', 'c', 'd', 'e', 'f' ]
+                    , Topology.faces
+                        >> List.sort
+                        >> Expect.equal
+                            [ ['a', 'b', 'c']
+                            , ['a', 'c', 'e']
+                            , ['a', 'e', 'f']
+                            , ['a', 'f', 'b']
+                            , ['b', 'd', 'c']
+                            , ['b', 'f', 'd']
+                            , ['c', 'd', 'e']
+                            , ['d', 'f', 'e']
+                            ]
+                    ]
         )

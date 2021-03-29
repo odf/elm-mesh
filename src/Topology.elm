@@ -4,11 +4,15 @@ module Topology exposing
     , empty
     , faces
     , fromOrientedFaces
+    , fromTriangularMesh
     , neighbors
+    , toTriangularMesh
     , vertices
     )
 
+import Array
 import Dict exposing (Dict)
+import TriangularMesh exposing (TriangularMesh)
 
 
 type Mesh comparable
@@ -217,3 +221,46 @@ neighbors vertex (HalfEdgeMesh mesh) =
         |> Maybe.map (\start -> vertexNeighbors start (HalfEdgeMesh mesh))
         |> Maybe.withDefault []
         |> canonicalCircular
+
+
+triangulate : List vertex -> List ( vertex, vertex, vertex )
+triangulate corners =
+    case corners of
+        u :: v :: rest ->
+            List.map2 (\r s -> ( u, r, s )) (v :: rest) rest
+
+        _ ->
+            []
+
+
+toTriangularMesh : Mesh comparable -> TriangularMesh comparable
+toTriangularMesh mesh =
+    let
+        originalVertices =
+            vertices mesh
+
+        vertexIndex =
+            originalVertices
+                |> List.indexedMap (\i v -> ( v, i ))
+                |> Dict.fromList
+
+        getAll indices dict =
+            List.filterMap (\i -> Dict.get i dict) indices
+
+        faceIndices =
+            faces mesh
+                |> List.map (\vs -> getAll vs vertexIndex)
+                |> List.concatMap triangulate
+    in
+    TriangularMesh.indexed
+        (originalVertices |> Array.fromList)
+        faceIndices
+
+
+fromTriangularMesh :
+    TriangularMesh comparable
+    -> Result String (Mesh comparable)
+fromTriangularMesh trimesh =
+    TriangularMesh.faceVertices trimesh
+        |> List.map (\( u, v, w ) -> [ u, v, w ])
+        |> fromOrientedFaces
