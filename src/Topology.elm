@@ -92,16 +92,6 @@ maybeFirst p =
             Nothing
 
 
-maybeSecond : ( a, Maybe b ) -> Maybe ( a, b )
-maybeSecond p =
-    case p of
-        ( first, Just second ) ->
-            Just ( first, second )
-
-        _ ->
-            Nothing
-
-
 maybeBoth : ( Maybe a, Maybe b ) -> Maybe ( a, b )
 maybeBoth p =
     case p of
@@ -110,6 +100,19 @@ maybeBoth p =
 
         _ ->
             Nothing
+
+
+getFromDict : Dict comparable b -> comparable -> Maybe b
+getFromDict dict key =
+    Dict.get key dict
+
+
+reverseDict : Dict comparable1 comparable2 -> Dict comparable2 comparable1
+reverseDict dict =
+    dict
+        |> Dict.toList
+        |> List.map (\( key, val ) -> ( val, key ))
+        |> Dict.fromList
 
 
 fromOrientedFaces : List (List comparable) -> Result String (Mesh comparable)
@@ -126,70 +129,45 @@ fromOrientedFaces faceLists =
                 |> List.indexedMap (\i e -> ( e, i ))
                 |> Dict.fromList
 
-        fromIndex =
-            toIndex
-                |> Dict.toList
-                |> List.map (\( e, i ) -> ( i, e ))
-                |> Dict.fromList
+        betweenIndexed =
+            List.map (\( a, b ) -> ( Dict.get a toIndex, Dict.get b toIndex ))
+                >> List.filterMap maybeBoth
+                >> Dict.fromList
+
+        fromIndexed =
+            List.map (\( a, b ) -> ( Dict.get a toIndex, b ))
+                >> List.filterMap maybeFirst
+                >> Dict.fromList
 
         next =
             List.concatMap cyclicPairs orientedEdgeLists
-                |> List.map
-                    (\( a, b ) -> ( Dict.get a toIndex, Dict.get b toIndex ))
-                |> List.filterMap maybeBoth
-                |> Dict.fromList
+                |> betweenIndexed
 
         opposite =
             orientedEdges
                 |> List.map (\( from, to ) -> ( ( from, to ), ( to, from ) ))
-                |> List.map
-                    (\( a, b ) -> ( Dict.get a toIndex, Dict.get b toIndex ))
-                |> List.filterMap maybeBoth
-                |> Dict.fromList
-
-        fromVertex =
-            orientedEdges
-                |> List.map (\( from, to ) -> ( from, ( from, to ) ))
-                |> List.map (\( a, b ) -> ( a, Dict.get b toIndex ))
-                |> List.filterMap maybeSecond
-                |> Dict.fromList
+                |> betweenIndexed
 
         toVertex =
             orientedEdges
                 |> List.map (\( from, to ) -> ( ( from, to ), from ))
-                |> List.map (\( a, b ) -> ( Dict.get a toIndex, b ))
-                |> List.filterMap maybeFirst
-                |> Dict.fromList
+                |> fromIndexed
 
-        fromEdge =
+        toEdge =
             orientedEdges
                 |> List.filter (\( from, to ) -> from < to)
                 |> List.indexedMap Tuple.pair
-                |> List.map (\( a, b ) -> ( a, Dict.get b toIndex ))
-                |> List.filterMap maybeSecond
-                |> Dict.fromList
-
-        toEdge =
-            Dict.toList fromEdge
                 |> List.concatMap
-                    (\( i, e ) ->
-                        [ ( Just e, i ), ( Dict.get e opposite, i ) ]
+                    (\( i, ( from, to ) ) ->
+                        [ ( ( from, to ), i ), ( ( to, from ), i ) ]
                     )
-                |> List.filterMap maybeFirst
-                |> Dict.fromList
+                |> fromIndexed
 
         toFace =
             orientedEdgeLists
                 |> List.indexedMap (\i -> List.map (\e -> ( e, i )))
                 |> List.concat
-                |> List.map (\( a, b ) -> ( Dict.get a toIndex, b ))
-                |> List.filterMap maybeFirst
-                |> Dict.fromList
-
-        fromFace =
-            Dict.toList toFace
-                |> List.map (\( key, val ) -> ( val, key ))
-                |> Dict.fromList
+                |> fromIndexed
 
         oppositeExists e =
             Dict.get e opposite
@@ -207,11 +185,11 @@ fromOrientedFaces faceLists =
             (HalfEdgeMesh
                 { next = next
                 , opposite = opposite
-                , fromVertex = fromVertex
+                , fromVertex = reverseDict toVertex
                 , toVertex = toVertex
-                , fromEdge = fromEdge
+                , fromEdge = reverseDict toEdge
                 , toEdge = toEdge
-                , fromFace = fromFace
+                , fromFace = reverseDict toFace
                 , toFace = toFace
                 }
             )
@@ -235,7 +213,7 @@ halfEdgeEnds edge (HalfEdgeMesh mesh) =
             Dict.get edge mesh.toVertex
 
         to =
-            twin |> Maybe.andThen (\e -> Dict.get e mesh.toVertex)
+            twin |> Maybe.andThen (getFromDict mesh.toVertex)
     in
     maybeBoth ( from, to )
 
@@ -245,6 +223,7 @@ edges (HalfEdgeMesh mesh) =
     Dict.values mesh.fromEdge
         |> List.map (\e -> halfEdgeEnds e (HalfEdgeMesh mesh))
         |> List.filterMap identity
+        |> List.map (\( from, to ) -> ( min from to, max from to ))
 
 
 canonicalCircular : List comparable -> List comparable
@@ -297,11 +276,11 @@ vertexNeighbors start (HalfEdgeMesh mesh) =
                     Dict.get current mesh.opposite
 
                 vertsOut =
-                    (twin |> Maybe.andThen (\e -> Dict.get e mesh.toVertex))
+                    (twin |> Maybe.andThen (getFromDict mesh.toVertex))
                         :: vertsIn
 
                 advance =
-                    twin |> Maybe.andThen (\e -> Dict.get e mesh.next)
+                    twin |> Maybe.andThen (getFromDict mesh.next)
             in
             case advance of
                 Just next ->
@@ -347,7 +326,7 @@ toTriangularMesh mesh =
                 |> Dict.fromList
 
         getAll indices dict =
-            List.filterMap (\i -> Dict.get i dict) indices
+            List.filterMap (getFromDict dict) indices
 
         faceIndices =
             faces mesh
