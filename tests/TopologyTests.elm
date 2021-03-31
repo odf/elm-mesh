@@ -51,6 +51,7 @@ goodFaceList =
                     [ Topology.vertices
                         >> Expect.equal (List.range 0 5)
                     , Topology.edges
+                        >> List.sort
                         >> Expect.equal
                             [ ( 0, 1 )
                             , ( 0, 2 )
