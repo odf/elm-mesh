@@ -17,26 +17,26 @@ import TriangularMesh exposing (TriangularMesh)
 
 type Mesh comparable
     = HalfEdgeMesh
-        { next : Dict HalfEdgeKey HalfEdgeKey
-        , opposite : Dict HalfEdgeKey HalfEdgeKey
-        , fromVertex : Dict comparable HalfEdgeKey
-        , toVertex : Dict HalfEdgeKey comparable
-        , fromEdge : Dict EdgeKey HalfEdgeKey
-        , toEdge : Dict HalfEdgeKey EdgeKey
-        , fromFace : Dict FaceKey HalfEdgeKey
-        , toFace : Dict HalfEdgeKey FaceKey
+        { next : Dict HalfEdge HalfEdge
+        , opposite : Dict HalfEdge HalfEdge
+        , fromVertex : Dict comparable HalfEdge
+        , toVertex : Dict HalfEdge comparable
+        , fromEdge : Dict Edge HalfEdge
+        , toEdge : Dict HalfEdge Edge
+        , fromFace : Dict Face HalfEdge
+        , toFace : Dict HalfEdge Face
         }
 
 
-type alias HalfEdgeKey =
+type alias HalfEdge =
     Int
 
 
-type alias FaceKey =
+type alias Face =
     Int
 
 
-type alias EdgeKey =
+type alias Edge =
     Int
 
 
@@ -200,10 +200,7 @@ vertices (HalfEdgeMesh mesh) =
     Dict.keys mesh.fromVertex
 
 
-halfEdgeEnds :
-    HalfEdgeKey
-    -> Mesh comparable
-    -> Maybe ( comparable, comparable )
+halfEdgeEnds : HalfEdge -> Mesh comparable -> Maybe ( comparable, comparable )
 halfEdgeEnds edge (HalfEdgeMesh mesh) =
     let
         twin =
@@ -238,7 +235,7 @@ canonicalCircular list =
     List.drop argmin list ++ List.take argmin list
 
 
-faceVertices : HalfEdgeKey -> Mesh comparable -> List comparable
+faceVertices : HalfEdge -> Mesh comparable -> List comparable
 faceVertices start (HalfEdgeMesh mesh) =
     let
         step vertsIn current =
@@ -267,7 +264,7 @@ faces (HalfEdgeMesh mesh) =
         |> List.map canonicalCircular
 
 
-vertexNeighbors : HalfEdgeKey -> Mesh comparable -> List comparable
+vertexNeighbors : HalfEdge -> Mesh comparable -> List comparable
 vertexNeighbors start (HalfEdgeMesh mesh) =
     let
         step vertsIn current =
