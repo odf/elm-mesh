@@ -10,15 +10,16 @@ module Topology exposing
     , vertices
     )
 
-import Array
+import Array exposing (Array)
 import Dict exposing (Dict)
 import TriangularMesh exposing (TriangularMesh)
 import Tuple.Extra
 
 
-type Mesh
+type Mesh vertex
     = HalfEdgeMesh
-        { next : Dict HalfEdge HalfEdge
+        { data : Dict Vertex vertex
+        , next : Dict HalfEdge HalfEdge
         , opposite : Dict HalfEdge HalfEdge
         , fromVertex : Dict Vertex HalfEdge
         , toVertex : Dict HalfEdge Vertex
@@ -45,10 +46,11 @@ type alias Vertex =
     Int
 
 
-empty : Mesh
+empty : Mesh vertex
 empty =
     HalfEdgeMesh
-        { next = Dict.empty
+        { data = Dict.empty
+        , next = Dict.empty
         , opposite = Dict.empty
         , fromVertex = Dict.empty
         , toVertex = Dict.empty
@@ -112,9 +114,17 @@ reverseDict =
     Dict.toList >> List.map Tuple.Extra.flip >> Dict.fromList
 
 
-fromOrientedFaces : List (List Int) -> Result String Mesh
-fromOrientedFaces faceLists =
+fromOrientedFaces :
+    Array vertex
+    -> List (List Int)
+    -> Result String (Mesh vertex)
+fromOrientedFaces vertexData faceLists =
     let
+        data =
+            Array.toList vertexData
+                |> List.indexedMap Tuple.pair
+                |> Dict.fromList
+
         orientedEdgeLists =
             List.map cyclicPairs faceLists
 
@@ -184,7 +194,8 @@ fromOrientedFaces faceLists =
     else
         Ok
             (HalfEdgeMesh
-                { next = next
+                { data = data
+                , next = next
                 , opposite = opposite
                 , fromVertex = reverseDict toVertex
                 , toVertex = toVertex
@@ -196,12 +207,12 @@ fromOrientedFaces faceLists =
             )
 
 
-vertices : Mesh -> List Int
+vertices : Mesh vertex -> List vertex
 vertices (HalfEdgeMesh mesh) =
-    Dict.keys mesh.fromVertex
+    Dict.values mesh.data
 
 
-halfEdgeEnds : HalfEdge -> Mesh -> Maybe ( Int, Int )
+halfEdgeEnds : HalfEdge -> Mesh vertex -> Maybe ( Int, Int )
 halfEdgeEnds edge (HalfEdgeMesh mesh) =
     let
         from =
@@ -216,7 +227,7 @@ halfEdgeEnds edge (HalfEdgeMesh mesh) =
     Tuple.Extra.sequenceMaybe ( from, to )
 
 
-edges : Mesh -> List ( Int, Int )
+edges : Mesh vertex -> List ( Int, Int )
 edges (HalfEdgeMesh mesh) =
     Dict.values mesh.fromEdge
         |> List.map (\e -> halfEdgeEnds e (HalfEdgeMesh mesh))
@@ -232,7 +243,7 @@ canonicalCircular list =
         |> Maybe.withDefault list
 
 
-faceVertices : HalfEdge -> Mesh -> List Int
+faceVertices : HalfEdge -> Mesh vertex -> List Int
 faceVertices start (HalfEdgeMesh mesh) =
     let
         step vertsIn current =
@@ -254,14 +265,14 @@ faceVertices start (HalfEdgeMesh mesh) =
     step [] start |> List.filterMap identity |> List.reverse
 
 
-faces : Mesh -> List (List Int)
+faces : Mesh vertex -> List (List Int)
 faces (HalfEdgeMesh mesh) =
     Dict.values mesh.fromFace
         |> List.map (\start -> faceVertices start (HalfEdgeMesh mesh))
         |> List.map canonicalCircular
 
 
-vertexNeighbors : HalfEdge -> Mesh -> List Int
+vertexNeighbors : HalfEdge -> Mesh vertex -> List Int
 vertexNeighbors start (HalfEdgeMesh mesh) =
     let
         step vertsIn current =
@@ -286,7 +297,7 @@ vertexNeighbors start (HalfEdgeMesh mesh) =
     step [] start |> List.filterMap identity
 
 
-neighbors : Int -> Mesh -> List Int
+neighbors : Int -> Mesh vertex -> List Int
 neighbors vertex (HalfEdgeMesh mesh) =
     Dict.get vertex mesh.fromVertex
         |> Maybe.map (\start -> vertexNeighbors start (HalfEdgeMesh mesh))
@@ -304,14 +315,11 @@ triangulate corners =
             []
 
 
-toTriangularMesh : Mesh -> TriangularMesh Int
-toTriangularMesh mesh =
+toTriangularMesh : Mesh vertex -> TriangularMesh vertex
+toTriangularMesh (HalfEdgeMesh mesh) =
     let
-        meshVertices =
-            vertices mesh
-
         vertexIndex =
-            meshVertices
+            Dict.keys mesh.data
                 |> List.indexedMap Tuple.pair
                 |> List.map Tuple.Extra.flip
                 |> Dict.fromList
@@ -320,17 +328,17 @@ toTriangularMesh mesh =
             List.filterMap (lookUpIn vertexIndex)
 
         faceIndices =
-            faces mesh
+            faces (HalfEdgeMesh mesh)
                 |> List.map getIndices
                 |> List.concatMap triangulate
     in
     TriangularMesh.indexed
-        (meshVertices |> Array.fromList)
+        (Dict.values mesh.data |> Array.fromList)
         faceIndices
 
 
-fromTriangularMesh : TriangularMesh Int -> Result String Mesh
+fromTriangularMesh : TriangularMesh vertex -> Result String (Mesh vertex)
 fromTriangularMesh trimesh =
-    TriangularMesh.faceVertices trimesh
+    TriangularMesh.faceIndices trimesh
         |> List.map (\( u, v, w ) -> [ u, v, w ])
-        |> fromOrientedFaces
+        |> fromOrientedFaces (TriangularMesh.vertices trimesh)
