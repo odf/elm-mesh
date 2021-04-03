@@ -93,14 +93,14 @@ cyclicPairs xs =
             []
 
 
-getFromDict : Dict comparable b -> comparable -> Maybe b
-getFromDict dict key =
+lookUpIn : Dict comparable b -> comparable -> Maybe b
+lookUpIn dict key =
     Dict.get key dict
 
 
-sequenceFromDict : Dict comparable b -> Maybe comparable -> Maybe b
-sequenceFromDict dict =
-    Maybe.andThen (getFromDict dict)
+andThenLookUpIn : Dict comparable b -> Maybe comparable -> Maybe b
+andThenLookUpIn =
+    lookUpIn >> Maybe.andThen
 
 
 reverseDict : Dict comparable1 comparable2 -> Dict comparable2 comparable1
@@ -124,7 +124,7 @@ fromOrientedFaces faceLists =
                 |> Dict.fromList
 
         getKey =
-            getFromDict toKey
+            lookUpIn toKey
 
         betweenKeyed =
             List.map (Tuple.Extra.map getKey)
@@ -162,12 +162,12 @@ fromOrientedFaces faceLists =
 
         toFace =
             orientedEdgeLists
-                |> List.indexedMap (\i -> List.map (Tuple.Extra.pairWith i))
+                |> List.indexedMap (Tuple.Extra.pairWith >> List.map)
                 |> List.concat
                 |> fromKeyed
 
         oppositeExists =
-            getFromDict opposite
+            lookUpIn opposite
                 >> Maybe.map (\opp -> Dict.member opp toFace)
                 >> Maybe.withDefault False
     in
@@ -202,12 +202,12 @@ halfEdgeEnds edge (HalfEdgeMesh mesh) =
     let
         from =
             edge
-                |> getFromDict mesh.toVertex
+                |> lookUpIn mesh.toVertex
 
         to =
             edge
-                |> getFromDict mesh.opposite
-                |> sequenceFromDict mesh.toVertex
+                |> lookUpIn mesh.opposite
+                |> andThenLookUpIn mesh.toVertex
     in
     Tuple.Extra.sequenceMaybe ( from, to )
 
@@ -263,12 +263,12 @@ vertexNeighbors start (HalfEdgeMesh mesh) =
         step vertsIn current =
             let
                 twin =
-                    Dict.get current mesh.opposite
+                    current |> lookUpIn mesh.opposite
 
                 vertsOut =
-                    (twin |> sequenceFromDict mesh.toVertex) :: vertsIn
+                    (twin |> andThenLookUpIn mesh.toVertex) :: vertsIn
             in
-            case twin |> sequenceFromDict mesh.next of
+            case twin |> andThenLookUpIn mesh.next of
                 Just next ->
                     if next == start then
                         vertsOut
@@ -313,7 +313,7 @@ toTriangularMesh mesh =
                 |> Dict.fromList
 
         getIndices =
-            List.filterMap (getFromDict vertexIndex)
+            List.filterMap (lookUpIn vertexIndex)
 
         faceIndices =
             faces mesh
