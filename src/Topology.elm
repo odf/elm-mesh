@@ -72,11 +72,21 @@ findDuplicate =
     List.sort >> findDupe
 
 
+pairs : List a -> List ( a, a )
+pairs xs =
+    case xs of
+        first :: second :: rest ->
+            ( first, second ) :: pairs (second :: rest)
+
+        _ ->
+            []
+
+
 cyclicPairs : List a -> List ( a, a )
-cyclicPairs indices =
-    case indices of
-        first :: rest ->
-            List.map2 Tuple.pair indices (rest ++ [ first ])
+cyclicPairs xs =
+    case xs of
+        first :: _ ->
+            pairs (xs ++ [ first ])
 
         _ ->
             []
@@ -107,12 +117,16 @@ getFromDict dict key =
     Dict.get key dict
 
 
+sequenceFromDict : Dict comparable b -> Maybe comparable -> Maybe b
+sequenceFromDict dict =
+    Maybe.andThen (getFromDict dict)
+
+
 reverseDict : Dict comparable1 comparable2 -> Dict comparable2 comparable1
-reverseDict dict =
-    dict
-        |> Dict.toList
-        |> List.map (\( key, val ) -> ( val, key ))
-        |> Dict.fromList
+reverseDict =
+    Dict.toList
+        >> List.map (\( key, val ) -> ( val, key ))
+        >> Dict.fromList
 
 
 fromOrientedFaces : List (List comparable) -> Result String (Mesh comparable)
@@ -124,34 +138,37 @@ fromOrientedFaces faceLists =
         orientedEdges =
             List.concat orientedEdgeLists
 
-        toIndex =
+        toKey =
             orientedEdges
                 |> List.indexedMap (\i e -> ( e, i ))
                 |> Dict.fromList
 
-        betweenIndexed =
-            List.map (\( a, b ) -> ( Dict.get a toIndex, Dict.get b toIndex ))
+        getKey =
+            getFromDict toKey
+
+        betweenKeyed =
+            List.map (Tuple.mapBoth getKey getKey)
                 >> List.filterMap maybeBoth
                 >> Dict.fromList
 
-        fromIndexed =
-            List.map (\( a, b ) -> ( Dict.get a toIndex, b ))
+        fromKeyed =
+            List.map (Tuple.mapBoth getKey identity)
                 >> List.filterMap maybeFirst
                 >> Dict.fromList
 
         next =
             List.concatMap cyclicPairs orientedEdgeLists
-                |> betweenIndexed
+                |> betweenKeyed
 
         opposite =
             orientedEdges
                 |> List.map (\( from, to ) -> ( ( from, to ), ( to, from ) ))
-                |> betweenIndexed
+                |> betweenKeyed
 
         toVertex =
             orientedEdges
                 |> List.map (\( from, to ) -> ( ( from, to ), from ))
-                |> fromIndexed
+                |> fromKeyed
 
         toEdge =
             orientedEdges
@@ -161,18 +178,18 @@ fromOrientedFaces faceLists =
                     (\( i, ( from, to ) ) ->
                         [ ( ( from, to ), i ), ( ( to, from ), i ) ]
                     )
-                |> fromIndexed
+                |> fromKeyed
 
         toFace =
             orientedEdgeLists
                 |> List.indexedMap (\i -> List.map (\e -> ( e, i )))
                 |> List.concat
-                |> fromIndexed
+                |> fromKeyed
 
-        oppositeExists e =
-            Dict.get e opposite
-                |> Maybe.map (\eback -> Dict.member eback toFace)
-                |> Maybe.withDefault False
+        oppositeExists =
+            getFromDict opposite
+                >> Maybe.map (\opp -> Dict.member opp toFace)
+                >> Maybe.withDefault False
     in
     if findDuplicate orientedEdges /= Nothing then
         Err "each oriented edge must be unique"
@@ -203,14 +220,14 @@ vertices (HalfEdgeMesh mesh) =
 halfEdgeEnds : HalfEdge -> Mesh comparable -> Maybe ( comparable, comparable )
 halfEdgeEnds edge (HalfEdgeMesh mesh) =
     let
-        twin =
-            Dict.get edge mesh.opposite
-
         from =
-            Dict.get edge mesh.toVertex
+            edge
+                |> getFromDict mesh.toVertex
 
         to =
-            twin |> Maybe.andThen (getFromDict mesh.toVertex)
+            edge
+                |> getFromDict mesh.opposite
+                |> sequenceFromDict mesh.toVertex
     in
     maybeBoth ( from, to )
 
@@ -273,11 +290,11 @@ vertexNeighbors start (HalfEdgeMesh mesh) =
                     Dict.get current mesh.opposite
 
                 vertsOut =
-                    (twin |> Maybe.andThen (getFromDict mesh.toVertex))
+                    (twin |> sequenceFromDict mesh.toVertex)
                         :: vertsIn
 
                 advance =
-                    twin |> Maybe.andThen (getFromDict mesh.next)
+                    twin |> sequenceFromDict mesh.next
             in
             case advance of
                 Just next ->
