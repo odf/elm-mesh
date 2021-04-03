@@ -286,13 +286,9 @@ vertexNeighbors start (HalfEdgeMesh mesh) =
                     Dict.get current mesh.opposite
 
                 vertsOut =
-                    (twin |> sequenceFromDict mesh.toVertex)
-                        :: vertsIn
-
-                advance =
-                    twin |> sequenceFromDict mesh.next
+                    (twin |> sequenceFromDict mesh.toVertex) :: vertsIn
             in
-            case advance of
+            case twin |> sequenceFromDict mesh.next of
                 Just next ->
                     if next == start then
                         vertsOut
@@ -327,24 +323,24 @@ triangulate corners =
 toTriangularMesh : Mesh comparable -> TriangularMesh comparable
 toTriangularMesh mesh =
     let
-        originalVertices =
+        meshVertices =
             vertices mesh
 
         vertexIndex =
-            originalVertices
+            meshVertices
                 |> List.indexedMap (\i v -> ( v, i ))
                 |> Dict.fromList
 
-        getAll indices dict =
-            List.filterMap (getFromDict dict) indices
+        getIndices =
+            List.filterMap (getFromDict vertexIndex)
 
         faceIndices =
             faces mesh
-                |> List.map (\vs -> getAll vs vertexIndex)
+                |> List.map getIndices
                 |> List.concatMap triangulate
     in
     TriangularMesh.indexed
-        (originalVertices |> Array.fromList)
+        (meshVertices |> Array.fromList)
         faceIndices
 
 
