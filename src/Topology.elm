@@ -16,12 +16,12 @@ import TriangularMesh exposing (TriangularMesh)
 import Tuple.Extra
 
 
-type Mesh comparable
+type Mesh
     = HalfEdgeMesh
         { next : Dict HalfEdge HalfEdge
         , opposite : Dict HalfEdge HalfEdge
-        , fromVertex : Dict comparable HalfEdge
-        , toVertex : Dict HalfEdge comparable
+        , fromVertex : Dict Vertex HalfEdge
+        , toVertex : Dict HalfEdge Vertex
         , fromEdge : Dict Edge HalfEdge
         , toEdge : Dict HalfEdge Edge
         , fromFace : Dict Face HalfEdge
@@ -41,7 +41,11 @@ type alias Edge =
     Int
 
 
-empty : Mesh comparable
+type alias Vertex =
+    Int
+
+
+empty : Mesh
 empty =
     HalfEdgeMesh
         { next = Dict.empty
@@ -108,7 +112,7 @@ reverseDict =
     Dict.toList >> List.map Tuple.Extra.flip >> Dict.fromList
 
 
-fromOrientedFaces : List (List comparable) -> Result String (Mesh comparable)
+fromOrientedFaces : List (List Int) -> Result String Mesh
 fromOrientedFaces faceLists =
     let
         orientedEdgeLists =
@@ -192,12 +196,12 @@ fromOrientedFaces faceLists =
             )
 
 
-vertices : Mesh comparable -> List comparable
+vertices : Mesh -> List Int
 vertices (HalfEdgeMesh mesh) =
     Dict.keys mesh.fromVertex
 
 
-halfEdgeEnds : HalfEdge -> Mesh comparable -> Maybe ( comparable, comparable )
+halfEdgeEnds : HalfEdge -> Mesh -> Maybe ( Int, Int )
 halfEdgeEnds edge (HalfEdgeMesh mesh) =
     let
         from =
@@ -212,7 +216,7 @@ halfEdgeEnds edge (HalfEdgeMesh mesh) =
     Tuple.Extra.sequenceMaybe ( from, to )
 
 
-edges : Mesh comparable -> List ( comparable, comparable )
+edges : Mesh -> List ( Int, Int )
 edges (HalfEdgeMesh mesh) =
     Dict.values mesh.fromEdge
         |> List.map (\e -> halfEdgeEnds e (HalfEdgeMesh mesh))
@@ -228,7 +232,7 @@ canonicalCircular list =
         |> Maybe.withDefault list
 
 
-faceVertices : HalfEdge -> Mesh comparable -> List comparable
+faceVertices : HalfEdge -> Mesh -> List Int
 faceVertices start (HalfEdgeMesh mesh) =
     let
         step vertsIn current =
@@ -250,14 +254,14 @@ faceVertices start (HalfEdgeMesh mesh) =
     step [] start |> List.filterMap identity |> List.reverse
 
 
-faces : Mesh comparable -> List (List comparable)
+faces : Mesh -> List (List Int)
 faces (HalfEdgeMesh mesh) =
     Dict.values mesh.fromFace
         |> List.map (\start -> faceVertices start (HalfEdgeMesh mesh))
         |> List.map canonicalCircular
 
 
-vertexNeighbors : HalfEdge -> Mesh comparable -> List comparable
+vertexNeighbors : HalfEdge -> Mesh -> List Int
 vertexNeighbors start (HalfEdgeMesh mesh) =
     let
         step vertsIn current =
@@ -282,7 +286,7 @@ vertexNeighbors start (HalfEdgeMesh mesh) =
     step [] start |> List.filterMap identity
 
 
-neighbors : comparable -> Mesh comparable -> List comparable
+neighbors : Int -> Mesh -> List Int
 neighbors vertex (HalfEdgeMesh mesh) =
     Dict.get vertex mesh.fromVertex
         |> Maybe.map (\start -> vertexNeighbors start (HalfEdgeMesh mesh))
@@ -300,7 +304,7 @@ triangulate corners =
             []
 
 
-toTriangularMesh : Mesh comparable -> TriangularMesh comparable
+toTriangularMesh : Mesh -> TriangularMesh Int
 toTriangularMesh mesh =
     let
         meshVertices =
@@ -325,9 +329,7 @@ toTriangularMesh mesh =
         faceIndices
 
 
-fromTriangularMesh :
-    TriangularMesh comparable
-    -> Result String (Mesh comparable)
+fromTriangularMesh : TriangularMesh Int -> Result String Mesh
 fromTriangularMesh trimesh =
     TriangularMesh.faceVertices trimesh
         |> List.map (\( u, v, w ) -> [ u, v, w ])

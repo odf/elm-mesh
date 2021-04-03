@@ -120,14 +120,14 @@ toTriangular : Test
 toTriangular =
     Test.test "toTriangular"
         (\() ->
-            [ [ 'a', 'b', 'c', 'd' ], [ 'd', 'c', 'b', 'a' ] ]
+            [ [ 0, 1, 2, 3 ], [ 3, 2, 1, 0 ] ]
                 |> Topology.fromOrientedFaces
                 |> Result.withDefault Topology.empty
                 |> Topology.toTriangularMesh
                 |> Expect.all
                     [ TriangularMesh.vertices
                         >> Array.toList
-                        >> Expect.equal [ 'a', 'b', 'c', 'd' ]
+                        >> Expect.equal [ 0, 1, 2, 3 ]
                     , TriangularMesh.faceIndices
                         >> Expect.equal
                             [ ( 0, 1, 2 )
@@ -137,10 +137,10 @@ toTriangular =
                             ]
                     , TriangularMesh.faceVertices
                         >> Expect.equal
-                            [ ( 'a', 'b', 'c' )
-                            , ( 'a', 'c', 'd' )
-                            , ( 'a', 'd', 'c' )
-                            , ( 'a', 'c', 'b' )
+                            [ ( 0, 1, 2 )
+                            , ( 0, 2, 3 )
+                            , ( 0, 3, 2 )
+                            , ( 0, 2, 1 )
                             ]
                     ]
         )
@@ -151,7 +151,7 @@ fromTriangular =
     Test.test "fromTriangular"
         (\() ->
             TriangularMesh.indexed
-                (Array.fromList [ 'a', 'b', 'c', 'd', 'e', 'f' ])
+                (Array.fromList [ 0, 1, 2, 3, 4, 5 ])
                 [ ( 0, 1, 2 )
                 , ( 1, 0, 5 )
                 , ( 2, 1, 3 )
@@ -165,18 +165,18 @@ fromTriangular =
                 |> Result.withDefault Topology.empty
                 |> Expect.all
                     [ Topology.vertices
-                        >> Expect.equal [ 'a', 'b', 'c', 'd', 'e', 'f' ]
+                        >> Expect.equal [ 0, 1, 2, 3, 4, 5 ]
                     , Topology.faces
                         >> List.sort
                         >> Expect.equal
-                            [ ['a', 'b', 'c']
-                            , ['a', 'c', 'e']
-                            , ['a', 'e', 'f']
-                            , ['a', 'f', 'b']
-                            , ['b', 'd', 'c']
-                            , ['b', 'f', 'd']
-                            , ['c', 'd', 'e']
-                            , ['d', 'f', 'e']
+                            [ [ 0, 1, 2 ]
+                            , [ 0, 2, 4 ]
+                            , [ 0, 4, 5 ]
+                            , [ 0, 5, 1 ]
+                            , [ 1, 3, 2 ]
+                            , [ 1, 5, 3 ]
+                            , [ 2, 3, 4 ]
+                            , [ 3, 5, 4 ]
                             ]
                     ]
         )
