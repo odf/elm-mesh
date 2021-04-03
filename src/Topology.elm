@@ -242,14 +242,10 @@ edges (HalfEdgeMesh mesh) =
 
 canonicalCircular : List comparable -> List comparable
 canonicalCircular list =
-    let
-        argmin =
-            List.indexedMap (\i k -> ( k, i )) list
-                |> List.minimum
-                |> Maybe.map Tuple.second
-                |> Maybe.withDefault 0
-    in
-    List.drop argmin list ++ List.take argmin list
+    List.range 0 (List.length list - 1)
+        |> List.map (\i -> List.drop i list ++ List.take i list)
+        |> List.minimum
+        |> Maybe.withDefault list
 
 
 faceVertices : HalfEdge -> Mesh comparable -> List comparable
