@@ -13,6 +13,7 @@ module Topology exposing
 import Array
 import Dict exposing (Dict)
 import TriangularMesh exposing (TriangularMesh)
+import Tuple.Extra
 
 
 type Mesh comparable
@@ -92,26 +93,6 @@ cyclicPairs xs =
             []
 
 
-maybeFirst : ( Maybe a, b ) -> Maybe ( a, b )
-maybeFirst p =
-    case p of
-        ( Just first, second ) ->
-            Just ( first, second )
-
-        _ ->
-            Nothing
-
-
-maybeBoth : ( Maybe a, Maybe b ) -> Maybe ( a, b )
-maybeBoth p =
-    case p of
-        ( Just first, Just second ) ->
-            Just ( first, second )
-
-        _ ->
-            Nothing
-
-
 getFromDict : Dict comparable b -> comparable -> Maybe b
 getFromDict dict key =
     Dict.get key dict
@@ -124,9 +105,7 @@ sequenceFromDict dict =
 
 reverseDict : Dict comparable1 comparable2 -> Dict comparable2 comparable1
 reverseDict =
-    Dict.toList
-        >> List.map (\( key, val ) -> ( val, key ))
-        >> Dict.fromList
+    Dict.toList >> List.map Tuple.Extra.flip >> Dict.fromList
 
 
 fromOrientedFaces : List (List comparable) -> Result String (Mesh comparable)
@@ -140,20 +119,21 @@ fromOrientedFaces faceLists =
 
         toKey =
             orientedEdges
-                |> List.indexedMap (\i e -> ( e, i ))
+                |> List.indexedMap Tuple.pair
+                |> List.map Tuple.Extra.flip
                 |> Dict.fromList
 
         getKey =
             getFromDict toKey
 
         betweenKeyed =
-            List.map (Tuple.mapBoth getKey getKey)
-                >> List.filterMap maybeBoth
+            List.map (Tuple.Extra.map getKey)
+                >> List.filterMap Tuple.Extra.sequenceMaybe
                 >> Dict.fromList
 
         fromKeyed =
-            List.map (Tuple.mapBoth getKey identity)
-                >> List.filterMap maybeFirst
+            List.map (Tuple.mapFirst getKey)
+                >> List.filterMap Tuple.Extra.sequenceFirstMaybe
                 >> Dict.fromList
 
         next =
@@ -182,7 +162,7 @@ fromOrientedFaces faceLists =
 
         toFace =
             orientedEdgeLists
-                |> List.indexedMap (\i -> List.map (\e -> ( e, i )))
+                |> List.indexedMap (\i -> List.map (Tuple.Extra.pairWith i))
                 |> List.concat
                 |> fromKeyed
 
@@ -229,7 +209,7 @@ halfEdgeEnds edge (HalfEdgeMesh mesh) =
                 |> getFromDict mesh.opposite
                 |> sequenceFromDict mesh.toVertex
     in
-    maybeBoth ( from, to )
+    Tuple.Extra.sequenceMaybe ( from, to )
 
 
 edges : Mesh comparable -> List ( comparable, comparable )
@@ -328,7 +308,8 @@ toTriangularMesh mesh =
 
         vertexIndex =
             meshVertices
-                |> List.indexedMap (\i v -> ( v, i ))
+                |> List.indexedMap Tuple.pair
+                |> List.map Tuple.Extra.flip
                 |> Dict.fromList
 
         getIndices =
