@@ -47,39 +47,39 @@ type Vertex
     = Vertex Int
 
 
-unHalfEdge : HalfEdge -> Int
-unHalfEdge (HalfEdge h) =
+unwrapHalfEdge : HalfEdge -> Int
+unwrapHalfEdge (HalfEdge h) =
     h
 
 
-unFace : Face -> Int
-unFace (Face f) =
+unwrapFace : Face -> Int
+unwrapFace (Face f) =
     f
 
 
-unEdge : Edge -> Int
-unEdge (Edge e) =
+unwrapEdge : Edge -> Int
+unwrapEdge (Edge e) =
     e
 
 
-unVertex : Vertex -> Int
-unVertex (Vertex v) =
+unwrapVertex : Vertex -> Int
+unwrapVertex (Vertex v) =
     v
 
 
 empty : Mesh vertex
 empty =
     HalfEdgeMesh
-        { vertexInfo = Dict.empty unVertex
-        , next = Dict.empty unHalfEdge
-        , previous = Dict.empty unHalfEdge
-        , opposite = Dict.empty unHalfEdge
-        , fromVertex = Dict.empty unVertex
-        , toVertex = Dict.empty unHalfEdge
-        , fromEdge = Dict.empty unEdge
-        , toEdge = Dict.empty unHalfEdge
-        , fromFace = Dict.empty unFace
-        , toFace = Dict.empty unHalfEdge
+        { vertexInfo = Dict.empty unwrapVertex
+        , next = Dict.empty unwrapHalfEdge
+        , previous = Dict.empty unwrapHalfEdge
+        , opposite = Dict.empty unwrapHalfEdge
+        , fromVertex = Dict.empty unwrapVertex
+        , toVertex = Dict.empty unwrapHalfEdge
+        , fromEdge = Dict.empty unwrapEdge
+        , toEdge = Dict.empty unwrapHalfEdge
+        , fromFace = Dict.empty unwrapFace
+        , toFace = Dict.empty unwrapHalfEdge
         }
 
 
@@ -130,7 +130,7 @@ fromOrientedFaces vertexData faceLists =
         vertexInfo =
             Array.toList vertexData
                 |> List.indexedMap (\n d -> ( Vertex n, d ))
-                |> Dict.fromList unVertex
+                |> Dict.fromList unwrapVertex
 
         orientedEdgeLists =
             List.map cyclicPairs faceLists
@@ -150,13 +150,13 @@ fromOrientedFaces vertexData faceLists =
             List.map (Tuple.Extra.map getKey)
                 >> List.filterMap Tuple.Extra.sequenceMaybe
                 >> List.map (Tuple.Extra.map HalfEdge)
-                >> Dict.fromList unHalfEdge
+                >> Dict.fromList unwrapHalfEdge
 
         fromKeyed =
             List.map (Tuple.mapFirst getKey)
                 >> List.filterMap Tuple.Extra.sequenceFirstMaybe
                 >> List.map (Tuple.mapFirst HalfEdge)
-                >> Dict.fromList unHalfEdge
+                >> Dict.fromList unwrapHalfEdge
 
         next =
             List.concatMap cyclicPairs orientedEdgeLists
@@ -204,13 +204,13 @@ fromOrientedFaces vertexData faceLists =
             (HalfEdgeMesh
                 { vertexInfo = vertexInfo
                 , next = next
-                , previous = Dict.reverse unHalfEdge next
+                , previous = Dict.reverse unwrapHalfEdge next
                 , opposite = opposite
-                , fromVertex = Dict.reverse unVertex toVertex
+                , fromVertex = Dict.reverse unwrapVertex toVertex
                 , toVertex = toVertex
-                , fromEdge = Dict.reverse unEdge toEdge
+                , fromEdge = Dict.reverse unwrapEdge toEdge
                 , toEdge = toEdge
-                , fromFace = Dict.reverse unFace toFace
+                , fromFace = Dict.reverse unwrapFace toFace
                 , toFace = toFace
                 }
             )
@@ -241,7 +241,7 @@ edges (HalfEdgeMesh mesh) =
     Dict.values mesh.fromEdge
         |> List.map (\e -> halfEdgeEnds e (HalfEdgeMesh mesh))
         |> List.filterMap identity
-        |> List.map (Tuple.Extra.map unVertex)
+        |> List.map (Tuple.Extra.map unwrapVertex)
         |> List.map (\( from, to ) -> ( min from to, max from to ))
 
 
@@ -281,7 +281,7 @@ faces : Mesh vertex -> List (List Int)
 faces (HalfEdgeMesh mesh) =
     Dict.values mesh.fromFace
         |> List.map (\start -> faceVertices start (HalfEdgeMesh mesh))
-        |> List.map (List.map unVertex >> canonicalCircular)
+        |> List.map (List.map unwrapVertex >> canonicalCircular)
 
 
 vertexRange : HalfEdge -> HalfEdge -> Mesh vertex -> List HalfEdge
@@ -320,7 +320,7 @@ neighbors vertex (HalfEdgeMesh mesh) =
     Dict.get (Vertex vertex) mesh.fromVertex
         |> Maybe.map (\start -> vertexNeighbors start (HalfEdgeMesh mesh))
         |> Maybe.withDefault []
-        |> List.map unVertex
+        |> List.map unwrapVertex
         |> canonicalCircular
 
 
