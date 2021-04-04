@@ -11,55 +11,75 @@ module Topology exposing
     )
 
 import Array exposing (Array)
-import Dict exposing (Dict)
+import MappedDict as Dict exposing (Dict)
 import TriangularMesh exposing (TriangularMesh)
 import Tuple.Extra
 
 
 type Mesh vertex
     = HalfEdgeMesh
-        { vertexInfo : Dict Vertex vertex
-        , next : Dict HalfEdge HalfEdge
-        , previous : Dict HalfEdge HalfEdge
-        , opposite : Dict HalfEdge HalfEdge
-        , fromVertex : Dict Vertex HalfEdge
-        , toVertex : Dict HalfEdge Vertex
-        , fromEdge : Dict Edge HalfEdge
-        , toEdge : Dict HalfEdge Edge
-        , fromFace : Dict Face HalfEdge
-        , toFace : Dict HalfEdge Face
+        { vertexInfo : Dict Int Vertex vertex
+        , next : Dict Int HalfEdge HalfEdge
+        , previous : Dict Int HalfEdge HalfEdge
+        , opposite : Dict Int HalfEdge HalfEdge
+        , fromVertex : Dict Int Vertex HalfEdge
+        , toVertex : Dict Int HalfEdge Vertex
+        , fromEdge : Dict Int Edge HalfEdge
+        , toEdge : Dict Int HalfEdge Edge
+        , fromFace : Dict Int Face HalfEdge
+        , toFace : Dict Int HalfEdge Face
         }
 
 
-type alias HalfEdge =
-    Int
+type HalfEdge
+    = HalfEdge Int
 
 
-type alias Face =
-    Int
+type Face
+    = Face Int
 
 
-type alias Edge =
-    Int
+type Edge
+    = Edge Int
 
 
-type alias Vertex =
-    Int
+type Vertex
+    = Vertex Int
+
+
+unHalfEdge : HalfEdge -> Int
+unHalfEdge (HalfEdge h) =
+    h
+
+
+unFace : Face -> Int
+unFace (Face f) =
+    f
+
+
+unEdge : Edge -> Int
+unEdge (Edge e) =
+    e
+
+
+unVertex : Vertex -> Int
+unVertex (Vertex v) =
+    v
 
 
 empty : Mesh vertex
 empty =
     HalfEdgeMesh
-        { vertexInfo = Dict.empty
-        , next = Dict.empty
-        , previous = Dict.empty
-        , opposite = Dict.empty
-        , fromVertex = Dict.empty
-        , toVertex = Dict.empty
-        , fromEdge = Dict.empty
-        , toEdge = Dict.empty
-        , fromFace = Dict.empty
-        , toFace = Dict.empty
+        { vertexInfo = Dict.empty unVertex
+        , next = Dict.empty unHalfEdge
+        , previous = Dict.empty unHalfEdge
+        , opposite = Dict.empty unHalfEdge
+        , fromVertex = Dict.empty unVertex
+        , toVertex = Dict.empty unHalfEdge
+        , fromEdge = Dict.empty unEdge
+        , toEdge = Dict.empty unHalfEdge
+        , fromFace = Dict.empty unFace
+        , toFace = Dict.empty unHalfEdge
         }
 
 
@@ -101,19 +121,22 @@ cyclicPairs xs =
             []
 
 
-lookUpIn : Dict comparable b -> comparable -> Maybe b
+lookUpIn : Dict comparable k v -> k -> Maybe v
 lookUpIn dict key =
     Dict.get key dict
 
 
-andThenLookUpIn : Dict comparable b -> Maybe comparable -> Maybe b
+andThenLookUpIn : Dict comparable k v -> Maybe k -> Maybe v
 andThenLookUpIn =
     lookUpIn >> Maybe.andThen
 
 
-reverseDict : Dict comparable1 comparable2 -> Dict comparable2 comparable1
-reverseDict =
-    Dict.toList >> List.map Tuple.Extra.flip >> Dict.fromList
+reverseDict :
+    (v -> comparable2)
+    -> Dict comparable1 k v
+    -> Dict comparable2 v k
+reverseDict makeKey =
+    Dict.toList >> List.map Tuple.Extra.flip >> Dict.fromList makeKey
 
 
 fromOrientedFaces :
@@ -124,8 +147,8 @@ fromOrientedFaces vertexData faceLists =
     let
         vertexInfo =
             Array.toList vertexData
-                |> List.indexedMap Tuple.pair
-                |> Dict.fromList
+                |> List.indexedMap (\n d -> ( Vertex n, d ))
+                |> Dict.fromList unVertex
 
         orientedEdgeLists =
             List.map cyclicPairs faceLists
@@ -135,9 +158,8 @@ fromOrientedFaces vertexData faceLists =
 
         toKey =
             orientedEdges
-                |> List.indexedMap Tuple.pair
-                |> List.map Tuple.Extra.flip
-                |> Dict.fromList
+                |> List.indexedMap (\i h -> ( h, i ))
+                |> Dict.fromList identity
 
         getKey =
             lookUpIn toKey
@@ -145,12 +167,14 @@ fromOrientedFaces vertexData faceLists =
         betweenKeyed =
             List.map (Tuple.Extra.map getKey)
                 >> List.filterMap Tuple.Extra.sequenceMaybe
-                >> Dict.fromList
+                >> List.map (Tuple.Extra.map HalfEdge)
+                >> Dict.fromList unHalfEdge
 
         fromKeyed =
             List.map (Tuple.mapFirst getKey)
                 >> List.filterMap Tuple.Extra.sequenceFirstMaybe
-                >> Dict.fromList
+                >> List.map (Tuple.mapFirst HalfEdge)
+                >> Dict.fromList unHalfEdge
 
         next =
             List.concatMap cyclicPairs orientedEdgeLists
@@ -163,7 +187,7 @@ fromOrientedFaces vertexData faceLists =
 
         toVertex =
             orientedEdges
-                |> List.map (\( from, to ) -> ( ( from, to ), from ))
+                |> List.map (\( from, to ) -> ( ( from, to ), Vertex from ))
                 |> fromKeyed
 
         toEdge =
@@ -172,13 +196,13 @@ fromOrientedFaces vertexData faceLists =
                 |> List.indexedMap Tuple.pair
                 |> List.concatMap
                     (\( i, ( from, to ) ) ->
-                        [ ( ( from, to ), i ), ( ( to, from ), i ) ]
+                        [ ( ( from, to ), Edge i ), ( ( to, from ), Edge i ) ]
                     )
                 |> fromKeyed
 
         toFace =
             orientedEdgeLists
-                |> List.indexedMap (Tuple.Extra.pairWith >> List.map)
+                |> List.indexedMap (\i -> List.map (\h -> ( h, Face i )))
                 |> List.concat
                 |> fromKeyed
 
@@ -198,13 +222,13 @@ fromOrientedFaces vertexData faceLists =
             (HalfEdgeMesh
                 { vertexInfo = vertexInfo
                 , next = next
-                , previous = reverseDict next
+                , previous = reverseDict unHalfEdge next
                 , opposite = opposite
-                , fromVertex = reverseDict toVertex
+                , fromVertex = reverseDict unVertex toVertex
                 , toVertex = toVertex
-                , fromEdge = reverseDict toEdge
+                , fromEdge = reverseDict unEdge toEdge
                 , toEdge = toEdge
-                , fromFace = reverseDict toFace
+                , fromFace = reverseDict unFace toFace
                 , toFace = toFace
                 }
             )
@@ -215,7 +239,7 @@ vertices (HalfEdgeMesh mesh) =
     Dict.values mesh.vertexInfo
 
 
-halfEdgeEnds : HalfEdge -> Mesh vertex -> Maybe ( Int, Int )
+halfEdgeEnds : HalfEdge -> Mesh vertex -> Maybe ( Vertex, Vertex )
 halfEdgeEnds edge (HalfEdgeMesh mesh) =
     let
         from =
@@ -235,6 +259,7 @@ edges (HalfEdgeMesh mesh) =
     Dict.values mesh.fromEdge
         |> List.map (\e -> halfEdgeEnds e (HalfEdgeMesh mesh))
         |> List.filterMap identity
+        |> List.map (Tuple.Extra.map unVertex)
         |> List.map (\( from, to ) -> ( min from to, max from to ))
 
 
@@ -274,7 +299,7 @@ faces : Mesh vertex -> List (List Int)
 faces (HalfEdgeMesh mesh) =
     Dict.values mesh.fromFace
         |> List.map (\start -> faceVertices start (HalfEdgeMesh mesh))
-        |> List.map canonicalCircular
+        |> List.map (List.map unVertex >> canonicalCircular)
 
 
 vertexRange : HalfEdge -> HalfEdge -> Mesh vertex -> List HalfEdge
@@ -299,7 +324,7 @@ vertexRange start end (HalfEdgeMesh mesh) =
     step end []
 
 
-vertexNeighbors : HalfEdge -> Mesh vertex -> List Int
+vertexNeighbors : HalfEdge -> Mesh vertex -> List Vertex
 vertexNeighbors start (HalfEdgeMesh mesh) =
     vertexRange start start (HalfEdgeMesh mesh)
         |> List.filterMap
@@ -310,9 +335,10 @@ vertexNeighbors start (HalfEdgeMesh mesh) =
 
 neighbors : Int -> Mesh vertex -> List Int
 neighbors vertex (HalfEdgeMesh mesh) =
-    Dict.get vertex mesh.fromVertex
+    Dict.get (Vertex vertex) mesh.fromVertex
         |> Maybe.map (\start -> vertexNeighbors start (HalfEdgeMesh mesh))
         |> Maybe.withDefault []
+        |> List.map unVertex
         |> canonicalCircular
 
 
@@ -331,9 +357,8 @@ toTriangularMesh (HalfEdgeMesh mesh) =
     let
         vertexIndex =
             Dict.keys mesh.vertexInfo
-                |> List.indexedMap Tuple.pair
-                |> List.map Tuple.Extra.flip
-                |> Dict.fromList
+                |> List.indexedMap (\i (Vertex v) -> ( v, i ))
+                |> Dict.fromList identity
 
         getIndices =
             List.filterMap (lookUpIn vertexIndex)
