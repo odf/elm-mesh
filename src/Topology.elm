@@ -121,24 +121,6 @@ cyclicPairs xs =
             []
 
 
-lookUpIn : Dict comparable k v -> k -> Maybe v
-lookUpIn dict key =
-    Dict.get key dict
-
-
-andThenLookUpIn : Dict comparable k v -> Maybe k -> Maybe v
-andThenLookUpIn =
-    lookUpIn >> Maybe.andThen
-
-
-reverseDict :
-    (v -> comparable2)
-    -> Dict comparable1 k v
-    -> Dict comparable2 v k
-reverseDict makeKey =
-    Dict.toList >> List.map Tuple.Extra.flip >> Dict.fromList makeKey
-
-
 fromOrientedFaces :
     Array vertex
     -> List (List Int)
@@ -162,7 +144,7 @@ fromOrientedFaces vertexData faceLists =
                 |> Dict.fromList identity
 
         getKey =
-            lookUpIn toKey
+            Dict.getIn toKey
 
         betweenKeyed =
             List.map (Tuple.Extra.map getKey)
@@ -207,7 +189,7 @@ fromOrientedFaces vertexData faceLists =
                 |> fromKeyed
 
         oppositeExists =
-            lookUpIn opposite
+            Dict.getIn opposite
                 >> Maybe.map (\opp -> Dict.member opp toFace)
                 >> Maybe.withDefault False
     in
@@ -222,13 +204,13 @@ fromOrientedFaces vertexData faceLists =
             (HalfEdgeMesh
                 { vertexInfo = vertexInfo
                 , next = next
-                , previous = reverseDict unHalfEdge next
+                , previous = Dict.reverse unHalfEdge next
                 , opposite = opposite
-                , fromVertex = reverseDict unVertex toVertex
+                , fromVertex = Dict.reverse unVertex toVertex
                 , toVertex = toVertex
-                , fromEdge = reverseDict unEdge toEdge
+                , fromEdge = Dict.reverse unEdge toEdge
                 , toEdge = toEdge
-                , fromFace = reverseDict unFace toFace
+                , fromFace = Dict.reverse unFace toFace
                 , toFace = toFace
                 }
             )
@@ -244,12 +226,12 @@ halfEdgeEnds edge (HalfEdgeMesh mesh) =
     let
         from =
             edge
-                |> lookUpIn mesh.toVertex
+                |> Dict.getIn mesh.toVertex
 
         to =
             edge
-                |> lookUpIn mesh.opposite
-                |> andThenLookUpIn mesh.toVertex
+                |> Dict.getIn mesh.opposite
+                |> Dict.andThenGetIn mesh.toVertex
     in
     Tuple.Extra.sequenceMaybe ( from, to )
 
@@ -275,7 +257,7 @@ faceRange : HalfEdge -> HalfEdge -> Mesh vertex -> List HalfEdge
 faceRange start end (HalfEdgeMesh mesh) =
     let
         step current tail =
-            case current |> lookUpIn mesh.previous of
+            case current |> Dict.getIn mesh.previous of
                 Just previous ->
                     if previous == start then
                         current :: tail
@@ -292,7 +274,7 @@ faceRange start end (HalfEdgeMesh mesh) =
 faceVertices : HalfEdge -> Mesh vertex -> List Vertex
 faceVertices start (HalfEdgeMesh mesh) =
     faceRange start start (HalfEdgeMesh mesh)
-        |> List.filterMap (lookUpIn mesh.toVertex)
+        |> List.filterMap (Dict.getIn mesh.toVertex)
 
 
 faces : Mesh vertex -> List (List Int)
@@ -308,8 +290,8 @@ vertexRange start end (HalfEdgeMesh mesh) =
         step current tail =
             case
                 current
-                    |> lookUpIn mesh.opposite
-                    |> andThenLookUpIn mesh.next
+                    |> Dict.getIn mesh.opposite
+                    |> Dict.andThenGetIn mesh.next
             of
                 Just previous ->
                     if previous == start then
@@ -328,8 +310,8 @@ vertexNeighbors : HalfEdge -> Mesh vertex -> List Vertex
 vertexNeighbors start (HalfEdgeMesh mesh) =
     vertexRange start start (HalfEdgeMesh mesh)
         |> List.filterMap
-            (lookUpIn mesh.opposite
-                >> andThenLookUpIn mesh.toVertex
+            (Dict.getIn mesh.opposite
+                >> Dict.andThenGetIn mesh.toVertex
             )
 
 
@@ -361,7 +343,7 @@ toTriangularMesh (HalfEdgeMesh mesh) =
                 |> Dict.fromList identity
 
         getIndices =
-            List.filterMap (lookUpIn vertexIndex)
+            List.filterMap (Dict.getIn vertexIndex)
 
         faceIndices =
             faces (HalfEdgeMesh mesh)

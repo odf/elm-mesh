@@ -1,10 +1,13 @@
 module MappedDict exposing
     ( Dict
+    , andThenGetIn
     , empty
     , fromList
     , get
+    , getIn
     , keys
     , member
+    , reverse
     , toList
     , values
     )
@@ -47,6 +50,21 @@ values dict =
 get : k -> Dict comparable k v -> Maybe v
 get key (MappedDict makeKey dict) =
     Dict.get (makeKey key) dict |> Maybe.map Tuple.second
+
+
+getIn : Dict comparable k v -> k -> Maybe v
+getIn dict key =
+    get key dict
+
+
+andThenGetIn : Dict comparable k v -> Maybe k -> Maybe v
+andThenGetIn =
+    getIn >> Maybe.andThen
+
+
+reverse : (v -> comparable2) -> Dict comparable1 k v -> Dict comparable2 v k
+reverse makeKey =
+    toList >> List.map (\( k, v ) -> ( v, k )) >> fromList makeKey
 
 
 member : k -> Dict comparable k v -> Bool
