@@ -2,9 +2,11 @@ module MappedDict exposing
     ( Dict
     , empty
     , fromList
+    , get
     , keys
+    , member
     , toList
-    , values, get, member
+    , values
     )
 
 import Dict
