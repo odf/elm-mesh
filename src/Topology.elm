@@ -18,8 +18,9 @@ import Tuple.Extra
 
 type Mesh vertex
     = HalfEdgeMesh
-        { data : Dict Vertex vertex
+        { vertexInfo : Dict Vertex vertex
         , next : Dict HalfEdge HalfEdge
+        , previous : Dict HalfEdge HalfEdge
         , opposite : Dict HalfEdge HalfEdge
         , fromVertex : Dict Vertex HalfEdge
         , toVertex : Dict HalfEdge Vertex
@@ -49,8 +50,9 @@ type alias Vertex =
 empty : Mesh vertex
 empty =
     HalfEdgeMesh
-        { data = Dict.empty
+        { vertexInfo = Dict.empty
         , next = Dict.empty
+        , previous = Dict.empty
         , opposite = Dict.empty
         , fromVertex = Dict.empty
         , toVertex = Dict.empty
@@ -120,7 +122,7 @@ fromOrientedFaces :
     -> Result String (Mesh vertex)
 fromOrientedFaces vertexData faceLists =
     let
-        data =
+        vertexInfo =
             Array.toList vertexData
                 |> List.indexedMap Tuple.pair
                 |> Dict.fromList
@@ -194,8 +196,9 @@ fromOrientedFaces vertexData faceLists =
     else
         Ok
             (HalfEdgeMesh
-                { data = data
+                { vertexInfo = vertexInfo
                 , next = next
+                , previous = reverseDict next
                 , opposite = opposite
                 , fromVertex = reverseDict toVertex
                 , toVertex = toVertex
@@ -209,7 +212,7 @@ fromOrientedFaces vertexData faceLists =
 
 vertices : Mesh vertex -> List vertex
 vertices (HalfEdgeMesh mesh) =
-    Dict.values mesh.data
+    Dict.values mesh.vertexInfo
 
 
 halfEdgeEnds : HalfEdge -> Mesh vertex -> Maybe ( Int, Int )
@@ -243,26 +246,28 @@ canonicalCircular list =
         |> Maybe.withDefault list
 
 
-faceVertices : HalfEdge -> Mesh vertex -> List Int
-faceVertices start (HalfEdgeMesh mesh) =
+faceRange : HalfEdge -> HalfEdge -> Mesh vertex -> List HalfEdge
+faceRange start end (HalfEdgeMesh mesh) =
     let
-        step vertsIn current =
-            let
-                vertsOut =
-                    Dict.get current mesh.toVertex :: vertsIn
-            in
-            case Dict.get current mesh.next of
-                Just next ->
-                    if next == start then
-                        vertsOut
+        step current tail =
+            case current |> lookUpIn mesh.previous of
+                Just previous ->
+                    if previous == start then
+                        current :: tail
 
                     else
-                        step vertsOut next
+                        step previous (current :: tail)
 
                 Nothing ->
                     []
     in
-    step [] start |> List.filterMap identity |> List.reverse
+    step end []
+
+
+faceVertices : HalfEdge -> Mesh vertex -> List Vertex
+faceVertices start (HalfEdgeMesh mesh) =
+    faceRange start start (HalfEdgeMesh mesh)
+        |> List.filterMap (lookUpIn mesh.toVertex)
 
 
 faces : Mesh vertex -> List (List Int)
@@ -272,29 +277,35 @@ faces (HalfEdgeMesh mesh) =
         |> List.map canonicalCircular
 
 
-vertexNeighbors : HalfEdge -> Mesh vertex -> List Int
-vertexNeighbors start (HalfEdgeMesh mesh) =
+vertexRange : HalfEdge -> HalfEdge -> Mesh vertex -> List HalfEdge
+vertexRange start end (HalfEdgeMesh mesh) =
     let
-        step vertsIn current =
-            let
-                twin =
-                    current |> lookUpIn mesh.opposite
-
-                vertsOut =
-                    (twin |> andThenLookUpIn mesh.toVertex) :: vertsIn
-            in
-            case twin |> andThenLookUpIn mesh.next of
-                Just next ->
-                    if next == start then
-                        vertsOut
+        step current tail =
+            case
+                current
+                    |> lookUpIn mesh.opposite
+                    |> andThenLookUpIn mesh.next
+            of
+                Just previous ->
+                    if previous == start then
+                        current :: tail
 
                     else
-                        step vertsOut next
+                        step previous (current :: tail)
 
                 Nothing ->
                     []
     in
-    step [] start |> List.filterMap identity
+    step end []
+
+
+vertexNeighbors : HalfEdge -> Mesh vertex -> List Int
+vertexNeighbors start (HalfEdgeMesh mesh) =
+    vertexRange start start (HalfEdgeMesh mesh)
+        |> List.filterMap
+            (lookUpIn mesh.opposite
+                >> andThenLookUpIn mesh.toVertex
+            )
 
 
 neighbors : Int -> Mesh vertex -> List Int
@@ -319,7 +330,7 @@ toTriangularMesh : Mesh vertex -> TriangularMesh vertex
 toTriangularMesh (HalfEdgeMesh mesh) =
     let
         vertexIndex =
-            Dict.keys mesh.data
+            Dict.keys mesh.vertexInfo
                 |> List.indexedMap Tuple.pair
                 |> List.map Tuple.Extra.flip
                 |> Dict.fromList
@@ -333,7 +344,7 @@ toTriangularMesh (HalfEdgeMesh mesh) =
                 |> List.concatMap triangulate
     in
     TriangularMesh.indexed
-        (Dict.values mesh.data |> Array.fromList)
+        (Dict.values mesh.vertexInfo |> Array.fromList)
         faceIndices
 
 
