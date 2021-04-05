@@ -1,11 +1,11 @@
-module MappedDictTests exposing
+module DictTests exposing
     ( empty
     , fromList
     , wrappedKeys
     )
 
 import Expect
-import MappedDict as Dict
+import Mesh.Dict as Dict
 import Test exposing (Test)
 
 

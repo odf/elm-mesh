@@ -1,4 +1,4 @@
-module Topology exposing
+module Mesh.Topology exposing
     ( Mesh
     , edges
     , empty
@@ -11,7 +11,7 @@ module Topology exposing
     )
 
 import Array
-import MappedDict as Dict exposing (Dict)
+import Mesh.Dict as Dict exposing (Dict)
 import TriangularMesh exposing (TriangularMesh)
 import Tuple.Extra
 

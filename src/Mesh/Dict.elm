@@ -1,4 +1,4 @@
-module MappedDict exposing
+module Mesh.Dict exposing
     ( Dict
     , andThenGetIn
     , empty

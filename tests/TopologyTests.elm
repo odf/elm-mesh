@@ -10,7 +10,7 @@ module TopologyTests exposing
 import Array
 import Expect
 import Test exposing (Test)
-import Topology
+import Mesh.Topology as Topology
 import TriangularMesh
 
 
