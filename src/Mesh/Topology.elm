@@ -299,8 +299,8 @@ vertexRange start end (HalfEdgeMesh mesh) =
         step current tail =
             case
                 current
-                    |> Dict.getIn mesh.opposite
-                    |> Dict.andThenGetIn mesh.next
+                    |> Dict.getIn mesh.next
+                    |> Dict.andThenGetIn mesh.opposite
             of
                 Just previous ->
                     if previous == start then
@@ -318,15 +318,14 @@ vertexRange start end (HalfEdgeMesh mesh) =
 vertexNeighbors : HalfEdge -> Mesh -> List Vertex
 vertexNeighbors start (HalfEdgeMesh mesh) =
     vertexRange start start (HalfEdgeMesh mesh)
-        |> List.filterMap
-            (Dict.getIn mesh.opposite
-                >> Dict.andThenGetIn mesh.toVertex
-            )
+        |> List.filterMap (Dict.getIn mesh.toVertex)
 
 
 neighbors : Int -> Mesh -> List Int
 neighbors vertex (HalfEdgeMesh mesh) =
-    Dict.get (Vertex vertex) mesh.fromVertex
+    Vertex vertex
+        |> Dict.getIn mesh.fromVertex
+        |> Dict.andThenGetIn mesh.opposite
         |> Maybe.map (\start -> vertexNeighbors start (HalfEdgeMesh mesh))
         |> Maybe.withDefault []
         |> List.map unwrapVertex
