@@ -1,5 +1,5 @@
 module TopologyTests exposing
-    ( empty
+    ( base
     , fromTriangular
     , goodFaceList
     , orientationMismatch
@@ -9,8 +9,8 @@ module TopologyTests exposing
 
 import Array
 import Expect
-import Test exposing (Test)
 import Mesh.Topology as Topology
+import Test exposing (Test)
 import TriangularMesh
 
 
@@ -27,15 +27,17 @@ octahedronFaces =
     ]
 
 
-empty : Test
-empty =
-    Test.test "empty"
+base : Test
+base =
+    Test.test "base"
         (\() ->
-            Topology.empty
+            Topology.base
                 |> Expect.all
-                    [ Topology.vertices >> Expect.equal []
-                    , Topology.edges >> Expect.equal []
-                    , Topology.faces >> Expect.equal []
+                    [ Topology.vertices >> Expect.equal [ 0, 1 ]
+                    , Topology.edges >> Expect.equal [ ( 0, 1 ) ]
+                    , Topology.faces >> Expect.equal [ [ 0, 1 ] ]
+                    , Topology.neighbors 0 >> Expect.equal [ 1 ]
+                    , Topology.neighbors 1 >> Expect.equal [ 0 ]
                     ]
         )
 
@@ -45,7 +47,7 @@ goodFaceList =
     Test.test "goodFaceList"
         (\() ->
             Topology.fromOrientedFaces octahedronFaces
-                |> Result.withDefault Topology.empty
+                |> Result.withDefault Topology.base
                 |> Expect.all
                     [ Topology.vertices
                         >> Expect.equal (List.range 0 5)
@@ -120,7 +122,7 @@ toTriangular =
     Test.test "toTriangular"
         (\() ->
             Topology.fromOrientedFaces [ [ 0, 1, 2, 3 ], [ 3, 2, 1, 0 ] ]
-                |> Result.withDefault Topology.empty
+                |> Result.withDefault Topology.base
                 |> Topology.toTriangularMesh
                 |> Expect.all
                     [ TriangularMesh.vertices
@@ -160,7 +162,7 @@ fromTriangular =
                 , ( 3, 4, 2 )
                 ]
                 |> Topology.fromTriangularMesh
-                |> Result.withDefault Topology.empty
+                |> Result.withDefault Topology.base
                 |> Expect.all
                     [ Topology.vertices
                         >> Expect.equal [ 0, 1, 2, 3, 4, 5 ]

@@ -4,9 +4,9 @@ module Mesh.Topology exposing
     , HalfEdge
     , Mesh
     , Vertex
+    , base
     , edgeDict
     , edges
-    , empty
     , faceDict
     , faces
     , fromOrientedFaces
@@ -94,57 +94,50 @@ unwrapFace (Face f) =
     f
 
 
-empty : Mesh
-empty =
-    HalfEdgeMesh
-        { next = halfEdgeDict
-        , previous = halfEdgeDict
-        , opposite = halfEdgeDict
-        , fromVertex = vertexDict
-        , toVertex = halfEdgeDict
-        , fromEdge = edgeDict
-        , toEdge = halfEdgeDict
-        , fromFace = faceDict
-        , toFace = halfEdgeDict
-        }
-
-
-findDuplicate : List comparable -> Maybe comparable
-findDuplicate =
+base : Mesh
+base =
     let
-        findDupe list =
-            case list of
-                first :: second :: rest ->
-                    if first == second then
-                        Just first
+        h1 =
+            HalfEdge 0
 
-                    else
-                        findDupe (second :: rest)
+        h2 =
+            HalfEdge 1
 
-                _ ->
-                    Nothing
+        v1 =
+            Vertex 0
+
+        v2 =
+            Vertex 1
+
+        e1 =
+            Edge 0
+
+        f1 =
+            Face 0
+
+        next =
+            halfEdgeDict |> Dict.insert h1 h2 |> Dict.insert h2 h1
+
+        toVertex =
+            halfEdgeDict |> Dict.insert h1 v1 |> Dict.insert h2 v2
+
+        toEdge =
+            halfEdgeDict |> Dict.insert h1 e1 |> Dict.insert h2 e1
+
+        toFace =
+            halfEdgeDict |> Dict.insert h1 f1 |> Dict.insert h2 f1
     in
-    List.sort >> findDupe
-
-
-pairs : List a -> List ( a, a )
-pairs xs =
-    case xs of
-        first :: second :: rest ->
-            ( first, second ) :: pairs (second :: rest)
-
-        _ ->
-            []
-
-
-cyclicPairs : List a -> List ( a, a )
-cyclicPairs xs =
-    case xs of
-        first :: _ ->
-            pairs (xs ++ [ first ])
-
-        _ ->
-            []
+    HalfEdgeMesh
+        { next = next
+        , previous = next
+        , opposite = next
+        , toVertex = toVertex
+        , fromVertex = Dict.reverse unwrapVertex toVertex
+        , toEdge = toEdge
+        , fromEdge = Dict.reverse unwrapEdge toEdge
+        , toFace = toFace
+        , fromFace = Dict.reverse unwrapFace toFace
+        }
 
 
 fromOrientedFaces : List (List Int) -> Result String Mesh
@@ -262,14 +255,6 @@ edges (HalfEdgeMesh mesh) =
         |> List.map (\( from, to ) -> ( min from to, max from to ))
 
 
-canonicalCircular : List comparable -> List comparable
-canonicalCircular list =
-    List.range 0 (List.length list - 1)
-        |> List.map (\i -> List.drop i list ++ List.take i list)
-        |> List.minimum
-        |> Maybe.withDefault list
-
-
 faceRange : HalfEdge -> HalfEdge -> Mesh -> List HalfEdge
 faceRange start end (HalfEdgeMesh mesh) =
     let
@@ -376,3 +361,49 @@ fromTriangularMesh trimesh =
     TriangularMesh.faceIndices trimesh
         |> List.map (\( u, v, w ) -> [ u, v, w ])
         |> fromOrientedFaces
+
+
+findDuplicate : List comparable -> Maybe comparable
+findDuplicate =
+    let
+        findDupe list =
+            case list of
+                first :: second :: rest ->
+                    if first == second then
+                        Just first
+
+                    else
+                        findDupe (second :: rest)
+
+                _ ->
+                    Nothing
+    in
+    List.sort >> findDupe
+
+
+pairs : List a -> List ( a, a )
+pairs xs =
+    case xs of
+        first :: second :: rest ->
+            ( first, second ) :: pairs (second :: rest)
+
+        _ ->
+            []
+
+
+cyclicPairs : List a -> List ( a, a )
+cyclicPairs xs =
+    case xs of
+        first :: _ ->
+            pairs (xs ++ [ first ])
+
+        _ ->
+            []
+
+
+canonicalCircular : List comparable -> List comparable
+canonicalCircular list =
+    List.range 0 (List.length list - 1)
+        |> List.map (\i -> List.drop i list ++ List.take i list)
+        |> List.minimum
+        |> Maybe.withDefault list
