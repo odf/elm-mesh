@@ -9,7 +9,7 @@ module Mesh.Dict exposing
     , member
     , reverse
     , toList
-    , values
+    , values, insert
     )
 
 import Dict
@@ -46,6 +46,10 @@ values : Dict comparable k v -> List v
 values dict =
     toList dict |> List.map Tuple.second
 
+
+insert : k -> v -> Dict comparable k v -> Dict comparable k v
+insert key value (MappedDict makeKey dict) =
+    Dict.insert (makeKey key) (key, value) dict |> MappedDict makeKey
 
 get : k -> Dict comparable k v -> Maybe v
 get key (MappedDict makeKey dict) =
