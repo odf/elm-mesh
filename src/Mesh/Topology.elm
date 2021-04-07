@@ -97,35 +97,21 @@ unwrapFace (Face f) =
 base : Mesh
 base =
     let
-        h1 =
-            HalfEdge 0
-
-        h2 =
-            HalfEdge 1
-
-        v1 =
-            Vertex 0
-
-        v2 =
-            Vertex 1
-
-        e1 =
-            Edge 0
-
-        f1 =
-            Face 0
-
         next =
-            halfEdgeDict |> Dict.insert h1 h2 |> Dict.insert h2 h1
+            List.indexedMap (\i a -> ( HalfEdge i, HalfEdge a )) [ 1, 0 ]
+                |> Dict.fromList unwrapHalfEdge
 
         toVertex =
-            halfEdgeDict |> Dict.insert h1 v1 |> Dict.insert h2 v2
+            List.indexedMap (\i a -> ( HalfEdge i, Vertex a )) [ 0, 1 ]
+                |> Dict.fromList unwrapHalfEdge
 
         toEdge =
-            halfEdgeDict |> Dict.insert h1 e1 |> Dict.insert h2 e1
+            List.indexedMap (\i a -> ( HalfEdge i, Edge a )) [ 0, 0 ]
+                |> Dict.fromList unwrapHalfEdge
 
         toFace =
-            halfEdgeDict |> Dict.insert h1 f1 |> Dict.insert h2 f1
+            List.indexedMap (\i a -> ( HalfEdge i, Face a )) [ 0, 0 ]
+                |> Dict.fromList unwrapHalfEdge
     in
     HalfEdgeMesh
         { next = next
