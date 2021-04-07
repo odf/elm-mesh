@@ -1,12 +1,20 @@
 module Mesh.Topology exposing
-    ( Mesh
+    ( Edge
+    , Face
+    , HalfEdge
+    , Mesh
+    , Vertex
+    , edgeDict
     , edges
     , empty
+    , faceDict
     , faces
     , fromOrientedFaces
     , fromTriangularMesh
+    , halfEdgeDict
     , neighbors
     , toTriangularMesh
+    , vertexDict
     , vertices
     )
 
@@ -34,16 +42,9 @@ type HalfEdge
     = HalfEdge Int
 
 
-type Face
-    = Face Int
-
-
-type Edge
-    = Edge Int
-
-
-type Vertex
-    = Vertex Int
+halfEdgeDict : Dict Int HalfEdge a
+halfEdgeDict =
+    Dict.empty unwrapHalfEdge
 
 
 unwrapHalfEdge : HalfEdge -> Int
@@ -51,14 +52,13 @@ unwrapHalfEdge (HalfEdge h) =
     h
 
 
-unwrapFace : Face -> Int
-unwrapFace (Face f) =
-    f
+type Vertex
+    = Vertex Int
 
 
-unwrapEdge : Edge -> Int
-unwrapEdge (Edge e) =
-    e
+vertexDict : Dict Int Vertex a
+vertexDict =
+    Dict.empty unwrapVertex
 
 
 unwrapVertex : Vertex -> Int
@@ -66,38 +66,46 @@ unwrapVertex (Vertex v) =
     v
 
 
-halfEdgeLookup : Dict Int HalfEdge a
-halfEdgeLookup =
-    Dict.empty unwrapHalfEdge
+type Edge
+    = Edge Int
 
 
-vertexLookup : Dict Int Vertex a
-vertexLookup =
-    Dict.empty unwrapVertex
-
-
-edgeLookup : Dict Int Edge a
-edgeLookup =
+edgeDict : Dict Int Edge a
+edgeDict =
     Dict.empty unwrapEdge
 
 
-faceLookup : Dict Int Face a
-faceLookup =
+unwrapEdge : Edge -> Int
+unwrapEdge (Edge e) =
+    e
+
+
+type Face
+    = Face Int
+
+
+faceDict : Dict Int Face a
+faceDict =
     Dict.empty unwrapFace
+
+
+unwrapFace : Face -> Int
+unwrapFace (Face f) =
+    f
 
 
 empty : Mesh
 empty =
     HalfEdgeMesh
-        { next = halfEdgeLookup
-        , previous = halfEdgeLookup
-        , opposite = halfEdgeLookup
-        , fromVertex = vertexLookup
-        , toVertex = halfEdgeLookup
-        , fromEdge = edgeLookup
-        , toEdge = halfEdgeLookup
-        , fromFace = faceLookup
-        , toFace = halfEdgeLookup
+        { next = halfEdgeDict
+        , previous = halfEdgeDict
+        , opposite = halfEdgeDict
+        , fromVertex = vertexDict
+        , toVertex = halfEdgeDict
+        , fromEdge = edgeDict
+        , toEdge = halfEdgeDict
+        , fromFace = faceDict
+        , toFace = halfEdgeDict
         }
 
 
