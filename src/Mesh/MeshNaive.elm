@@ -1,4 +1,4 @@
-module Mesh exposing
+module Mesh.MeshNaive exposing
     ( Mesh
     , combine
     , deduplicateVertices

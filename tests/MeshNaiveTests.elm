@@ -1,4 +1,4 @@
-module MeshTests exposing
+module MeshNaiveTests exposing
     ( combine
     , edgeVertices
     , empty
@@ -18,7 +18,7 @@ import Array
 import Dict
 import Expect
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
-import Mesh exposing (Mesh)
+import Mesh.MeshNaive as Mesh exposing (Mesh)
 import Test exposing (Test)
 import TriangularMesh
 
