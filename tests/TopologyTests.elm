@@ -1,5 +1,5 @@
 module TopologyTests exposing
-    ( base
+    ( empty
     , fromTriangular
     , goodFaceList
     , orientationMismatch
@@ -7,11 +7,16 @@ module TopologyTests exposing
     , unpairedOrientedEdge
     )
 
-import Array
+import Array exposing (Array)
 import Expect
 import Mesh.Topology as Topology
 import Test exposing (Test)
 import TriangularMesh
+
+
+octahedronVertices : Array Int
+octahedronVertices =
+    Array.fromList [ 0, 1, 2, 3, 4, 5 ]
 
 
 octahedronFaces : List (List Int)
@@ -27,17 +32,15 @@ octahedronFaces =
     ]
 
 
-base : Test
-base =
-    Test.test "base"
+empty : Test
+empty =
+    Test.test "empty"
         (\() ->
-            Topology.base
+            Topology.empty
                 |> Expect.all
-                    [ Topology.vertices >> Expect.equal [ 0, 1 ]
-                    , Topology.edges >> Expect.equal [ ( 0, 1 ) ]
-                    , Topology.faces >> Expect.equal [ [ 0, 1 ] ]
-                    , Topology.neighbors 0 >> Expect.equal [ 1 ]
-                    , Topology.neighbors 1 >> Expect.equal [ 0 ]
+                    [ Topology.vertices >> Array.toList >> Expect.equal []
+                    , Topology.edgeIndices >> Expect.equal []
+                    , Topology.faceIndices >> Expect.equal []
                     ]
         )
 
@@ -46,13 +49,14 @@ goodFaceList : Test
 goodFaceList =
     Test.test "goodFaceList"
         (\() ->
-            Topology.fromOrientedFaces octahedronFaces
-                |> Result.withDefault Topology.base
+            octahedronFaces
+                |> Topology.fromOrientedFaces octahedronVertices
+                |> Result.withDefault Topology.empty
                 |> Expect.all
                     [ Topology.vertices
+                        >> Array.toList
                         >> Expect.equal (List.range 0 5)
-                    , Topology.edges
-                        >> List.sort
+                    , Topology.edgeIndices
                         >> Expect.equal
                             [ ( 0, 1 )
                             , ( 0, 2 )
@@ -67,7 +71,7 @@ goodFaceList =
                             , ( 3, 5 )
                             , ( 4, 5 )
                             ]
-                    , Topology.faces
+                    , Topology.faceIndices
                         >> List.sort
                         >> Expect.equal
                             [ [ 0, 1, 2 ]
@@ -81,7 +85,9 @@ goodFaceList =
                             ]
                     , \mesh ->
                         Topology.vertices mesh
-                            |> List.map (\v -> ( v, Topology.neighbors v mesh ))
+                            |> Array.toList
+                            |> List.map
+                                (\v -> ( v, Topology.neighborIndices v mesh ))
                             |> Expect.equal
                                 [ ( 0, [ 1, 2, 4, 5 ] )
                                 , ( 1, [ 0, 5, 3, 2 ] )
@@ -100,7 +106,7 @@ unpairedOrientedEdge =
         (\() ->
             octahedronFaces
                 |> List.drop 1
-                |> Topology.fromOrientedFaces
+                |> Topology.fromOrientedFaces octahedronVertices
                 |> Expect.err
         )
 
@@ -112,7 +118,7 @@ orientationMismatch =
             octahedronFaces
                 |> List.drop 1
                 |> (::) [ 0, 2, 1 ]
-                |> Topology.fromOrientedFaces
+                |> Topology.fromOrientedFaces octahedronVertices
                 |> Expect.err
         )
 
@@ -121,13 +127,15 @@ toTriangular : Test
 toTriangular =
     Test.test "toTriangular"
         (\() ->
-            Topology.fromOrientedFaces [ [ 0, 1, 2, 3 ], [ 3, 2, 1, 0 ] ]
-                |> Result.withDefault Topology.base
+            [ [ 0, 1, 2, 3 ], [ 3, 2, 1, 0 ] ]
+                |> Topology.fromOrientedFaces
+                    (Array.fromList [ 'a', 'b', 'c', 'd' ])
+                |> Result.withDefault Topology.empty
                 |> Topology.toTriangularMesh
                 |> Expect.all
                     [ TriangularMesh.vertices
                         >> Array.toList
-                        >> Expect.equal [ 0, 1, 2, 3 ]
+                        >> Expect.equal [ 'a', 'b', 'c', 'd' ]
                     , TriangularMesh.faceIndices
                         >> Expect.equal
                             [ ( 0, 1, 2 )
@@ -137,10 +145,10 @@ toTriangular =
                             ]
                     , TriangularMesh.faceVertices
                         >> Expect.equal
-                            [ ( 0, 1, 2 )
-                            , ( 0, 2, 3 )
-                            , ( 0, 3, 2 )
-                            , ( 0, 2, 1 )
+                            [ ( 'a', 'b', 'c' )
+                            , ( 'a', 'c', 'd' )
+                            , ( 'a', 'd', 'c' )
+                            , ( 'a', 'c', 'b' )
                             ]
                     ]
         )
@@ -162,21 +170,22 @@ fromTriangular =
                 , ( 3, 4, 2 )
                 ]
                 |> Topology.fromTriangularMesh
-                |> Result.withDefault Topology.base
+                |> Result.withDefault Topology.empty
                 |> Expect.all
                     [ Topology.vertices
-                        >> Expect.equal [ 0, 1, 2, 3, 4, 5 ]
-                    , Topology.faces
+                        >> Array.toList
+                        >> Expect.equal [ 'a', 'b', 'c', 'd', 'e', 'f' ]
+                    , Topology.faceIndices
                         >> List.sort
                         >> Expect.equal
-                            [ [ 0, 1, 2 ]
-                            , [ 0, 2, 4 ]
-                            , [ 0, 4, 5 ]
-                            , [ 0, 5, 1 ]
-                            , [ 1, 3, 2 ]
-                            , [ 1, 5, 3 ]
-                            , [ 2, 3, 4 ]
-                            , [ 3, 5, 4 ]
+                            [ [ 0, 1, 2 ] -- [ 'a', 'b', 'c' ]
+                            , [ 0, 2, 4 ] -- [ 'a', 'c', 'e' ]
+                            , [ 0, 4, 5 ] -- [ 'a', 'e', 'f' ]
+                            , [ 0, 5, 1 ] -- [ 'a', 'f', 'b' ]
+                            , [ 1, 3, 2 ] -- [ 'b', 'd', 'c' ]
+                            , [ 1, 5, 3 ] -- [ 'b', 'f', 'd' ]
+                            , [ 2, 3, 4 ] -- [ 'c', 'd', 'e' ]
+                            , [ 3, 5, 4 ] -- [ 'd', 'f', 'e' ]
                             ]
                     ]
         )

@@ -1,133 +1,59 @@
 module Mesh.Topology exposing
-    ( Edge
-    , Face
-    , HalfEdge
-    , Mesh
-    , Vertex
-    , base
-    , edgeDict
-    , edges
-    , faceDict
-    , faces
+    ( Mesh
+    , edgeIndices
+    , empty
+    , faceIndices
     , fromOrientedFaces
     , fromTriangularMesh
-    , halfEdgeDict
-    , neighbors
+    , neighborIndices
     , toTriangularMesh
-    , vertexDict
     , vertices
     )
 
-import Array
-import Mesh.Dict as Dict exposing (Dict)
+import Array exposing (Array)
+import Dict exposing (Dict)
 import TriangularMesh exposing (TriangularMesh)
-import Tuple.Extra
 
 
-type Mesh
-    = HalfEdgeMesh
-        { next : Dict Int HalfEdge HalfEdge
-        , previous : Dict Int HalfEdge HalfEdge
-        , opposite : Dict Int HalfEdge HalfEdge
-        , fromVertex : Dict Int Vertex HalfEdge
-        , toVertex : Dict Int HalfEdge Vertex
-        , fromEdge : Dict Int Edge HalfEdge
-        , toEdge : Dict Int HalfEdge Edge
-        , fromFace : Dict Int Face HalfEdge
-        , toFace : Dict Int HalfEdge Face
+type Mesh vertex
+    = Mesh
+        { vertices : Array vertex
+        , next : Dict OrientedEdge OrientedEdge
+        , atVertex : Array OrientedEdge
+        , alongFace : Dict FaceKey OrientedEdge
+        , toFace : Dict OrientedEdge FaceKey
         }
 
 
-type HalfEdge
-    = HalfEdge Int
+type alias OrientedEdge =
+    ( Int, Int )
 
 
-halfEdgeDict : Dict Int HalfEdge a
-halfEdgeDict =
-    Dict.empty unwrapHalfEdge
+type alias FaceKey =
+    Int
 
 
-unwrapHalfEdge : HalfEdge -> Int
-unwrapHalfEdge (HalfEdge h) =
-    h
+opposite : OrientedEdge -> OrientedEdge
+opposite ( from, to ) =
+    ( to, from )
 
 
-type Vertex
-    = Vertex Int
-
-
-vertexDict : Dict Int Vertex a
-vertexDict =
-    Dict.empty unwrapVertex
-
-
-unwrapVertex : Vertex -> Int
-unwrapVertex (Vertex v) =
-    v
-
-
-type Edge
-    = Edge Int
-
-
-edgeDict : Dict Int Edge a
-edgeDict =
-    Dict.empty unwrapEdge
-
-
-unwrapEdge : Edge -> Int
-unwrapEdge (Edge e) =
-    e
-
-
-type Face
-    = Face Int
-
-
-faceDict : Dict Int Face a
-faceDict =
-    Dict.empty unwrapFace
-
-
-unwrapFace : Face -> Int
-unwrapFace (Face f) =
-    f
-
-
-base : Mesh
-base =
-    let
-        next =
-            List.indexedMap (\i a -> ( HalfEdge i, HalfEdge a )) [ 1, 0 ]
-                |> Dict.fromList unwrapHalfEdge
-
-        toVertex =
-            List.indexedMap (\i a -> ( HalfEdge i, Vertex a )) [ 0, 1 ]
-                |> Dict.fromList unwrapHalfEdge
-
-        toEdge =
-            List.indexedMap (\i a -> ( HalfEdge i, Edge a )) [ 0, 0 ]
-                |> Dict.fromList unwrapHalfEdge
-
-        toFace =
-            List.indexedMap (\i a -> ( HalfEdge i, Face a )) [ 0, 0 ]
-                |> Dict.fromList unwrapHalfEdge
-    in
-    HalfEdgeMesh
-        { next = next
-        , previous = next
-        , opposite = next
-        , toVertex = toVertex
-        , fromVertex = Dict.reverse unwrapVertex toVertex
-        , toEdge = toEdge
-        , fromEdge = Dict.reverse unwrapEdge toEdge
-        , toFace = toFace
-        , fromFace = Dict.reverse unwrapFace toFace
+empty : Mesh vertex
+empty =
+    Mesh
+        { vertices = Array.empty
+        , next = Dict.empty
+        , atVertex = Array.empty
+        , alongFace = Dict.empty
+        , toFace = Dict.empty
         }
 
 
-fromOrientedFaces : List (List Int) -> Result String Mesh
-fromOrientedFaces faceLists =
+fromOrientedFaces :
+    Array vertex
+    -> List (List Int)
+    -> Result String (Mesh vertex)
+fromOrientedFaces vertexData faceLists =
     let
         orientedEdgeLists =
             List.map cyclicPairs faceLists
@@ -135,183 +61,136 @@ fromOrientedFaces faceLists =
         orientedEdges =
             List.concat orientedEdgeLists
 
-        toKey =
-            orientedEdges
-                |> List.indexedMap (\i h -> ( h, i ))
-                |> Dict.fromList identity
-
-        getKey =
-            Dict.getIn toKey
-
-        betweenKeyed =
-            List.map (Tuple.Extra.map getKey)
-                >> List.filterMap Tuple.Extra.sequenceMaybe
-                >> List.map (Tuple.Extra.map HalfEdge)
-                >> Dict.fromList unwrapHalfEdge
-
-        fromKeyed =
-            List.map (Tuple.mapFirst getKey)
-                >> List.filterMap Tuple.Extra.sequenceFirstMaybe
-                >> List.map (Tuple.mapFirst HalfEdge)
-                >> Dict.fromList unwrapHalfEdge
-
         next =
-            List.concatMap cyclicPairs orientedEdgeLists
-                |> betweenKeyed
+            List.concatMap cyclicPairs orientedEdgeLists |> Dict.fromList
 
-        opposite =
+        fromVertex =
             orientedEdges
-                |> List.map (\( from, to ) -> ( ( from, to ), ( to, from ) ))
-                |> betweenKeyed
-
-        toVertex =
-            orientedEdges
-                |> List.map (\( from, to ) -> ( ( from, to ), Vertex from ))
-                |> fromKeyed
-
-        toEdge =
-            orientedEdges
-                |> List.filter (\( from, to ) -> from < to)
-                |> List.indexedMap Tuple.pair
-                |> List.concatMap
-                    (\( i, ( from, to ) ) ->
-                        [ ( ( from, to ), Edge i ), ( ( to, from ), Edge i ) ]
-                    )
-                |> fromKeyed
+                |> List.map (\( from, to ) -> ( from, ( from, to ) ))
+                |> Dict.fromList
+                |> Dict.values
+                |> Array.fromList
 
         toFace =
             orientedEdgeLists
-                |> List.indexedMap (\i -> List.map (\h -> ( h, Face i )))
+                |> List.indexedMap (\i -> List.map (\e -> ( e, i )))
                 |> List.concat
-                |> fromKeyed
+                |> Dict.fromList
 
-        oppositeExists =
-            Dict.getIn opposite
-                >> Maybe.map (\opp -> Dict.member opp toFace)
-                >> Maybe.withDefault False
+        fromFace =
+            Dict.toList toFace
+                |> List.map (\( key, val ) -> ( val, key ))
+                |> Dict.fromList
+
+        seen e =
+            Dict.member e toFace
     in
     if findDuplicate orientedEdges /= Nothing then
         Err "each oriented edge must be unique"
 
-    else if List.any (oppositeExists >> not) (Dict.keys next) then
+    else if List.any (opposite >> seen >> not) orientedEdges then
         Err "each oriented edge must have a reverse"
 
     else
         Ok
-            (HalfEdgeMesh
-                { next = next
-                , previous = Dict.reverse unwrapHalfEdge next
-                , opposite = opposite
-                , fromVertex = Dict.reverse unwrapVertex toVertex
-                , toVertex = toVertex
-                , fromEdge = Dict.reverse unwrapEdge toEdge
-                , toEdge = toEdge
-                , fromFace = Dict.reverse unwrapFace toFace
+            (Mesh
+                { vertices = vertexData
+                , next = next
+                , atVertex = fromVertex
+                , alongFace = fromFace
                 , toFace = toFace
                 }
             )
 
 
-vertices : Mesh -> List Int
-vertices (HalfEdgeMesh mesh) =
-    Dict.keys mesh.fromVertex |> List.map unwrapVertex
+vertices : Mesh vertex -> Array vertex
+vertices (Mesh mesh) =
+    mesh.vertices
 
 
-halfEdgeEnds : HalfEdge -> Mesh -> Maybe ( Vertex, Vertex )
-halfEdgeEnds edge (HalfEdgeMesh mesh) =
+edgeIndices : Mesh vertex -> List ( Int, Int )
+edgeIndices (Mesh mesh) =
+    Dict.keys mesh.next |> List.filter (\( from, to ) -> from <= to)
+
+
+verticesInFace : OrientedEdge -> Mesh vertex -> List Int
+verticesInFace start (Mesh mesh) =
     let
-        from =
-            edge
-                |> Dict.getIn mesh.toVertex
-
-        to =
-            edge
-                |> Dict.getIn mesh.opposite
-                |> Dict.andThenGetIn mesh.toVertex
-    in
-    Tuple.Extra.sequenceMaybe ( from, to )
-
-
-edges : Mesh -> List ( Int, Int )
-edges (HalfEdgeMesh mesh) =
-    Dict.values mesh.fromEdge
-        |> List.map (\e -> halfEdgeEnds e (HalfEdgeMesh mesh))
-        |> List.filterMap identity
-        |> List.map (Tuple.Extra.map unwrapVertex)
-        |> List.map (\( from, to ) -> ( min from to, max from to ))
-
-
-faceRange : HalfEdge -> HalfEdge -> Mesh -> List HalfEdge
-faceRange start end (HalfEdgeMesh mesh) =
-    let
-        step current tail =
-            case current |> Dict.getIn mesh.previous of
-                Just previous ->
-                    if previous == start then
-                        current :: tail
+        step vertsIn current =
+            let
+                vertsOut =
+                    Tuple.first current :: vertsIn
+            in
+            case Dict.get current mesh.next of
+                Just next ->
+                    if next == start then
+                        vertsOut
 
                     else
-                        step previous (current :: tail)
+                        step vertsOut next
 
                 Nothing ->
                     []
     in
-    step end []
+    step [] start |> List.reverse
 
 
-faceVertices : HalfEdge -> Mesh -> List Vertex
-faceVertices start (HalfEdgeMesh mesh) =
-    faceRange start start (HalfEdgeMesh mesh)
-        |> List.filterMap (Dict.getIn mesh.toVertex)
+faceIndices : Mesh vertex -> List (List Int)
+faceIndices (Mesh mesh) =
+    Dict.values mesh.alongFace
+        |> List.map (\start -> verticesInFace start (Mesh mesh))
+        |> List.map canonicalCircular
 
 
-faces : Mesh -> List (List Int)
-faces (HalfEdgeMesh mesh) =
-    Dict.values mesh.fromFace
-        |> List.map (\start -> faceVertices start (HalfEdgeMesh mesh))
-        |> List.map (List.map unwrapVertex >> canonicalCircular)
-
-
-vertexRange : HalfEdge -> HalfEdge -> Mesh -> List HalfEdge
-vertexRange start end (HalfEdgeMesh mesh) =
+vertexNeighbors : OrientedEdge -> Mesh vertex -> List Int
+vertexNeighbors start (Mesh mesh) =
     let
-        step current tail =
-            case
-                current
-                    |> Dict.getIn mesh.next
-                    |> Dict.andThenGetIn mesh.opposite
-            of
-                Just previous ->
-                    if previous == start then
-                        current :: tail
+        step vertsIn current =
+            let
+                vertsOut =
+                    Tuple.second current :: vertsIn
+            in
+            case Dict.get (opposite current) mesh.next of
+                Just next ->
+                    if next == start then
+                        vertsOut
 
                     else
-                        step previous (current :: tail)
+                        step vertsOut next
 
                 Nothing ->
                     []
     in
-    step end []
+    step [] start
 
 
-vertexNeighbors : HalfEdge -> Mesh -> List Vertex
-vertexNeighbors start (HalfEdgeMesh mesh) =
-    vertexRange start start (HalfEdgeMesh mesh)
-        |> List.filterMap (Dict.getIn mesh.toVertex)
-
-
-neighbors : Int -> Mesh -> List Int
-neighbors vertex (HalfEdgeMesh mesh) =
-    Vertex vertex
-        |> Dict.getIn mesh.fromVertex
-        |> Dict.andThenGetIn mesh.opposite
-        |> Maybe.map (\start -> vertexNeighbors start (HalfEdgeMesh mesh))
+neighborIndices : Int -> Mesh vertex -> List Int
+neighborIndices vertex (Mesh mesh) =
+    Array.get vertex mesh.atVertex
+        |> Maybe.map (\start -> vertexNeighbors start (Mesh mesh))
         |> Maybe.withDefault []
-        |> List.map unwrapVertex
         |> canonicalCircular
 
 
-triangulate : List a -> List ( a, a, a )
+toTriangularMesh : Mesh vertex -> TriangularMesh vertex
+toTriangularMesh mesh =
+    TriangularMesh.indexed
+        (vertices mesh)
+        (faceIndices mesh |> List.concatMap triangulate)
+
+
+fromTriangularMesh : TriangularMesh vertex -> Result String (Mesh vertex)
+fromTriangularMesh trimesh =
+    TriangularMesh.faceIndices trimesh
+        |> List.map (\( u, v, w ) -> [ u, v, w ])
+        |> fromOrientedFaces (TriangularMesh.vertices trimesh)
+
+
+
+-- List helpers
+
+
+triangulate : List vertex -> List ( vertex, vertex, vertex )
 triangulate corners =
     case corners of
         u :: v :: rest ->
@@ -319,34 +198,6 @@ triangulate corners =
 
         _ ->
             []
-
-
-toTriangularMesh : Mesh -> TriangularMesh Int
-toTriangularMesh (HalfEdgeMesh mesh) =
-    let
-        vertexIndex =
-            Dict.keys mesh.fromVertex
-                |> List.indexedMap (\i (Vertex v) -> ( v, i ))
-                |> Dict.fromList identity
-
-        getIndices =
-            List.filterMap (Dict.getIn vertexIndex)
-
-        faceIndices =
-            faces (HalfEdgeMesh mesh)
-                |> List.map getIndices
-                |> List.concatMap triangulate
-    in
-    TriangularMesh.indexed
-        (Dict.keys mesh.fromVertex |> List.map unwrapVertex |> Array.fromList)
-        faceIndices
-
-
-fromTriangularMesh : TriangularMesh vertex -> Result String Mesh
-fromTriangularMesh trimesh =
-    TriangularMesh.faceIndices trimesh
-        |> List.map (\( u, v, w ) -> [ u, v, w ])
-        |> fromOrientedFaces
 
 
 findDuplicate : List comparable -> Maybe comparable
@@ -367,21 +218,11 @@ findDuplicate =
     List.sort >> findDupe
 
 
-pairs : List a -> List ( a, a )
-pairs xs =
-    case xs of
-        first :: second :: rest ->
-            ( first, second ) :: pairs (second :: rest)
-
-        _ ->
-            []
-
-
 cyclicPairs : List a -> List ( a, a )
-cyclicPairs xs =
-    case xs of
-        first :: _ ->
-            pairs (xs ++ [ first ])
+cyclicPairs indices =
+    case indices of
+        first :: rest ->
+            List.map2 Tuple.pair indices (rest ++ [ first ])
 
         _ ->
             []
@@ -390,6 +231,6 @@ cyclicPairs xs =
 canonicalCircular : List comparable -> List comparable
 canonicalCircular list =
     List.range 0 (List.length list - 1)
-        |> List.map (\i -> List.drop i list ++ List.take i list)
+        |> List.map (\k -> List.drop k list ++ List.take k list)
         |> List.minimum
         |> Maybe.withDefault list
