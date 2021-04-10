@@ -14,9 +14,9 @@ import Test exposing (Test)
 import TriangularMesh
 
 
-octahedronVertices : Array Int
+octahedronVertices : Array String
 octahedronVertices =
-    Array.fromList [ 0, 1, 2, 3, 4, 5 ]
+    Array.fromList [ "front", "right", "top", "back", "left", "bottom" ]
 
 
 octahedronFaces : List (List Int)
@@ -54,8 +54,7 @@ goodFaceList =
                 |> Result.withDefault Topology.empty
                 |> Expect.all
                     [ Topology.vertices
-                        >> Array.toList
-                        >> Expect.equal (List.range 0 5)
+                        >> Expect.equal octahedronVertices
                     , Topology.edgeIndices
                         >> Expect.equal
                             [ ( 0, 1 )
@@ -71,6 +70,21 @@ goodFaceList =
                             , ( 3, 5 )
                             , ( 4, 5 )
                             ]
+                    , Topology.edgeVertices
+                        >> Expect.equal
+                            [ ( "front", "right" )
+                            , ( "front", "top" )
+                            , ( "front", "left" )
+                            , ( "front", "bottom" )
+                            , ( "right", "top" )
+                            , ( "right", "back" )
+                            , ( "right", "bottom" )
+                            , ( "top", "back" )
+                            , ( "top", "left" )
+                            , ( "back", "left" )
+                            , ( "back", "bottom" )
+                            , ( "left", "bottom" )
+                            ]
                     , Topology.faceIndices
                         >> List.sort
                         >> Expect.equal
@@ -83,9 +97,20 @@ goodFaceList =
                             , [ 2, 3, 4 ]
                             , [ 3, 5, 4 ]
                             ]
+                    , Topology.faceVertices
+                        >> List.sort
+                        >> Expect.equal
+                            [ [ "back", "bottom", "left" ]
+                            , [ "front", "bottom", "right" ]
+                            , [ "front", "left", "bottom" ]
+                            , [ "front", "right", "top" ]
+                            , [ "front", "top", "left" ]
+                            , [ "right", "back", "top" ]
+                            , [ "right", "bottom", "back" ]
+                            , [ "top", "back", "left" ]
+                            ]
                     , \mesh ->
-                        Topology.vertices mesh
-                            |> Array.toList
+                        List.range 0 5
                             |> List.map
                                 (\v -> ( v, Topology.neighborIndices v mesh ))
                             |> Expect.equal
@@ -178,14 +203,26 @@ fromTriangular =
                     , Topology.faceIndices
                         >> List.sort
                         >> Expect.equal
-                            [ [ 0, 1, 2 ] -- [ 'a', 'b', 'c' ]
-                            , [ 0, 2, 4 ] -- [ 'a', 'c', 'e' ]
-                            , [ 0, 4, 5 ] -- [ 'a', 'e', 'f' ]
-                            , [ 0, 5, 1 ] -- [ 'a', 'f', 'b' ]
-                            , [ 1, 3, 2 ] -- [ 'b', 'd', 'c' ]
-                            , [ 1, 5, 3 ] -- [ 'b', 'f', 'd' ]
-                            , [ 2, 3, 4 ] -- [ 'c', 'd', 'e' ]
-                            , [ 3, 5, 4 ] -- [ 'd', 'f', 'e' ]
+                            [ [ 0, 1, 2 ]
+                            , [ 0, 2, 4 ]
+                            , [ 0, 4, 5 ]
+                            , [ 0, 5, 1 ]
+                            , [ 1, 3, 2 ]
+                            , [ 1, 5, 3 ]
+                            , [ 2, 3, 4 ]
+                            , [ 3, 5, 4 ]
+                            ]
+                    , Topology.faceVertices
+                        >> List.sort
+                        >> Expect.equal
+                            [ [ 'a', 'b', 'c' ]
+                            , [ 'a', 'c', 'e' ]
+                            , [ 'a', 'e', 'f' ]
+                            , [ 'a', 'f', 'b' ]
+                            , [ 'b', 'd', 'c' ]
+                            , [ 'b', 'f', 'd' ]
+                            , [ 'c', 'd', 'e' ]
+                            , [ 'd', 'f', 'e' ]
                             ]
                     ]
         )

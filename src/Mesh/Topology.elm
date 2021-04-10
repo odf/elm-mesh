@@ -1,8 +1,10 @@
 module Mesh.Topology exposing
     ( Mesh
     , edgeIndices
+    , edgeVertices
     , empty
     , faceIndices
+    , faceVertices
     , fromOrientedFaces
     , fromTriangularMesh
     , neighborIndices
@@ -106,9 +108,9 @@ vertices (Mesh mesh) =
     mesh.vertices
 
 
-edgeIndices : Mesh vertex -> List ( Int, Int )
-edgeIndices (Mesh mesh) =
-    Dict.keys mesh.next |> List.filter (\( from, to ) -> from <= to)
+vertex : Int -> Mesh vertex -> Maybe vertex
+vertex index mesh =
+    Array.get index (vertices mesh)
 
 
 verticesInFace : OrientedEdge -> Mesh vertex -> List Int
@@ -140,6 +142,29 @@ faceIndices (Mesh mesh) =
         |> List.map canonicalCircular
 
 
+faceVertices : Mesh vertex -> List (List vertex)
+faceVertices mesh =
+    let
+        toFace =
+            List.filterMap (\i -> vertex i mesh)
+    in
+    List.map toFace (faceIndices mesh)
+
+
+edgeIndices : Mesh vertex -> List ( Int, Int )
+edgeIndices (Mesh mesh) =
+    Dict.keys mesh.next |> List.filter (\( from, to ) -> from <= to)
+
+
+edgeVertices : Mesh vertex -> List ( vertex, vertex )
+edgeVertices mesh =
+    let
+        toEdge ( i, j ) =
+            Maybe.map2 Tuple.pair (vertex i mesh) (vertex j mesh)
+    in
+    List.filterMap toEdge (edgeIndices mesh)
+
+
 vertexNeighbors : OrientedEdge -> Mesh vertex -> List Int
 vertexNeighbors start (Mesh mesh) =
     let
@@ -163,8 +188,8 @@ vertexNeighbors start (Mesh mesh) =
 
 
 neighborIndices : Int -> Mesh vertex -> List Int
-neighborIndices vertex (Mesh mesh) =
-    Array.get vertex mesh.atVertex
+neighborIndices vertexIndex (Mesh mesh) =
+    Array.get vertexIndex mesh.atVertex
         |> Maybe.map (\start -> vertexNeighbors start (Mesh mesh))
         |> Maybe.withDefault []
         |> canonicalCircular
