@@ -1,7 +1,9 @@
 module TopologyTests exposing
-    ( empty
+    ( combine
+    , empty
     , fromTriangular
     , goodFaceList
+    , mapVertices
     , orientationMismatch
     , toTriangular
     , unpairedOrientedEdge
@@ -231,6 +233,52 @@ fromTriangular =
                             , [ 'b', 'f', 'd' ]
                             , [ 'c', 'd', 'e' ]
                             , [ 'd', 'f', 'e' ]
+                            ]
+                    ]
+        )
+
+
+mapVertices : Test
+mapVertices =
+    Test.test "mapVertices"
+        (\() ->
+            Topology.fromOrientedFaces octahedronVertices octahedronFaces
+                |> Result.withDefault Topology.empty
+                |> Topology.mapVertices (String.slice 0 2 >> String.toUpper)
+                |> Expect.all
+                    [ Topology.vertices
+                        >> Array.toList
+                        >> Expect.equal [ "FR", "RI", "TO", "BA", "LE", "BO" ]
+                    ]
+        )
+
+
+combine : Test
+combine =
+    let
+        tetra =
+            Topology.fromOrientedFaces
+                (Array.fromList [ 0, 1, 2, 3 ])
+                [ [ 0, 1, 2 ], [ 0, 2, 3 ], [ 0, 3, 1 ], [ 3, 2, 1 ] ]
+                |> Result.withDefault Topology.empty
+    in
+    Test.test "combine"
+        (\() ->
+            Topology.combine [ tetra, Topology.mapVertices ((+) 4) tetra ]
+                |> Expect.all
+                    [ Topology.vertices
+                        >> Array.toList
+                        >> Expect.equal [ 0, 1, 2, 3, 4, 5, 6, 7 ]
+                    , Topology.faceIndices
+                        >> Expect.equal
+                            [ [ 0, 1, 2 ]
+                            , [ 0, 2, 3 ]
+                            , [ 0, 3, 1 ]
+                            , [ 1, 3, 2 ]
+                            , [ 4, 5, 6 ]
+                            , [ 4, 6, 7 ]
+                            , [ 4, 7, 5 ]
+                            , [ 5, 7, 6 ]
                             ]
                     ]
         )

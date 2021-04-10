@@ -1,5 +1,6 @@
 module Mesh.Topology exposing
     ( Mesh
+    , combine
     , edgeIndices
     , edgeVertices
     , empty
@@ -7,6 +8,7 @@ module Mesh.Topology exposing
     , faceVertices
     , fromOrientedFaces
     , fromTriangularMesh
+    , mapVertices
     , neighborIndices
     , neighborVertices
     , toTriangularMesh
@@ -213,6 +215,42 @@ fromTriangularMesh trimesh =
     TriangularMesh.faceIndices trimesh
         |> List.map (\( u, v, w ) -> [ u, v, w ])
         |> fromOrientedFaces (TriangularMesh.vertices trimesh)
+
+
+mapVertices : (a -> b) -> Mesh a -> Mesh b
+mapVertices function (Mesh mesh) =
+    Mesh
+        { vertices = Array.map function mesh.vertices
+        , atVertex = mesh.atVertex
+        , alongFace = mesh.alongFace
+        , next = mesh.next
+        , toFace = mesh.toFace
+        }
+
+
+combine : List (Mesh a) -> Mesh a
+combine meshes =
+    let
+        vertices_ =
+            List.map (vertices >> Array.toList) meshes
+                |> List.concat
+                |> Array.fromList
+
+        makeFaces offset meshes_ =
+            case meshes_ of
+                mesh :: rest ->
+                    let
+                        nextOffset =
+                            offset + Array.length (vertices mesh)
+                    in
+                    List.map (List.map ((+) offset)) (faceIndices mesh)
+                        ++ makeFaces nextOffset rest
+
+                _ ->
+                    []
+    in
+    fromOrientedFaces vertices_ (makeFaces 0 meshes)
+        |> Result.withDefault empty
 
 
 
