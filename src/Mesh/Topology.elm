@@ -25,8 +25,8 @@ import TriangularMesh exposing (TriangularMesh)
 
 type Mesh vertex
     = Mesh
-        { vertices : Array vertex
-        , atVertex : Array OrientedEdge
+        (Array vertex)
+        { atVertex : Array OrientedEdge
         , alongFace : Array OrientedEdge
         , next : Dict OrientedEdge OrientedEdge
         , toFace : Dict OrientedEdge Int
@@ -44,9 +44,8 @@ opposite ( from, to ) =
 
 empty : Mesh vertex
 empty =
-    Mesh
-        { vertices = Array.empty
-        , atVertex = Array.empty
+    Mesh Array.empty
+        { atVertex = Array.empty
         , alongFace = Array.empty
         , next = Dict.empty
         , toFace = Dict.empty
@@ -99,9 +98,8 @@ fromOrientedFaces vertexData faceLists =
 
     else
         Ok
-            (Mesh
-                { vertices = vertexData
-                , atVertex = fromVertex
+            (Mesh vertexData
+                { atVertex = fromVertex
                 , alongFace = fromFace
                 , next = next
                 , toFace = toFace
@@ -110,8 +108,8 @@ fromOrientedFaces vertexData faceLists =
 
 
 vertices : Mesh vertex -> Array vertex
-vertices (Mesh mesh) =
-    mesh.vertices
+vertices (Mesh verts _) =
+    verts
 
 
 vertex : Int -> Mesh vertex -> Maybe vertex
@@ -120,7 +118,7 @@ vertex index mesh =
 
 
 verticesInFace : OrientedEdge -> Mesh vertex -> List Int
-verticesInFace start (Mesh mesh) =
+verticesInFace start (Mesh _ mesh) =
     let
         step vertsIn current =
             let
@@ -142,9 +140,9 @@ verticesInFace start (Mesh mesh) =
 
 
 faceIndices : Mesh vertex -> List (List Int)
-faceIndices (Mesh mesh) =
+faceIndices (Mesh verts mesh) =
     Array.toList mesh.alongFace
-        |> List.map (\start -> verticesInFace start (Mesh mesh))
+        |> List.map (\start -> verticesInFace start (Mesh verts mesh))
         |> List.map canonicalCircular
 
 
@@ -158,7 +156,7 @@ faceVertices mesh =
 
 
 edgeIndices : Mesh vertex -> List ( Int, Int )
-edgeIndices (Mesh mesh) =
+edgeIndices (Mesh _ mesh) =
     Dict.keys mesh.next |> List.filter (\( from, to ) -> from <= to)
 
 
@@ -172,7 +170,7 @@ edgeVertices mesh =
 
 
 vertexNeighbors : OrientedEdge -> Mesh vertex -> List Int
-vertexNeighbors start (Mesh mesh) =
+vertexNeighbors start (Mesh _ mesh) =
     let
         step vertsIn current =
             let
@@ -194,9 +192,9 @@ vertexNeighbors start (Mesh mesh) =
 
 
 neighborIndices : Mesh vertex -> Array (List Int)
-neighborIndices (Mesh mesh) =
+neighborIndices (Mesh verts mesh) =
     Array.toList mesh.atVertex
-        |> List.map (\start -> vertexNeighbors start (Mesh mesh))
+        |> List.map (\start -> vertexNeighbors start (Mesh verts mesh))
         |> List.map canonicalCircular
         |> Array.fromList
 
@@ -221,14 +219,8 @@ fromTriangularMesh trimesh =
 
 
 mapVertices : (a -> b) -> Mesh a -> Mesh b
-mapVertices function (Mesh mesh) =
-    Mesh
-        { vertices = Array.map function mesh.vertices
-        , atVertex = mesh.atVertex
-        , alongFace = mesh.alongFace
-        , next = mesh.next
-        , toFace = mesh.toFace
-        }
+mapVertices fn (Mesh verts mesh) =
+    Mesh (Array.map fn verts) mesh
 
 
 combine : List (Mesh a) -> Mesh a
@@ -257,10 +249,10 @@ combine meshes =
 
 
 withNormals : (a -> Vec3) -> (a -> Vec3 -> b) -> Mesh a -> Mesh b
-withNormals toPositionIn toVertexOut (Mesh mesh) =
+withNormals toPositionIn toVertexOut (Mesh verts mesh) =
     let
         neighbors =
-            neighborVertices (Mesh mesh)
+            neighborVertices (Mesh verts mesh)
 
         mapVertex idx v =
             let
@@ -277,18 +269,12 @@ withNormals toPositionIn toVertexOut (Mesh mesh) =
                 |> toVertexOut v
 
         verticesOut =
-            vertices (Mesh mesh)
+            verts
                 |> Array.toList
                 |> List.indexedMap mapVertex
                 |> Array.fromList
     in
-    Mesh
-        { vertices = verticesOut
-        , atVertex = mesh.atVertex
-        , alongFace = mesh.alongFace
-        , next = mesh.next
-        , toFace = mesh.toFace
-        }
+    Mesh verticesOut mesh
 
 
 
