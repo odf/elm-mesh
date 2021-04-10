@@ -12,11 +12,14 @@ module Mesh.Topology exposing
     , neighborIndices
     , neighborVertices
     , toTriangularMesh
+    , vertex
     , vertices
+    , withNormals
     )
 
 import Array exposing (Array)
 import Dict exposing (Dict)
+import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import TriangularMesh exposing (TriangularMesh)
 
 
@@ -251,6 +254,41 @@ combine meshes =
     in
     fromOrientedFaces vertices_ (makeFaces 0 meshes)
         |> Result.withDefault empty
+
+
+withNormals : (a -> Vec3) -> (a -> Vec3 -> b) -> Mesh a -> Mesh b
+withNormals toPositionIn toVertexOut (Mesh mesh) =
+    let
+        neighbors =
+            neighborVertices (Mesh mesh)
+
+        mapVertex idx v =
+            let
+                p =
+                    toPositionIn v
+            in
+            Array.get idx neighbors
+                |> Maybe.withDefault []
+                |> List.map (toPositionIn >> Vec3.sub p)
+                |> cyclicPairs
+                |> List.map (\( a, b ) -> Vec3.cross a b)
+                |> List.foldl Vec3.add (vec3 0 0 0)
+                |> Vec3.normalize
+                |> toVertexOut v
+
+        verticesOut =
+            vertices (Mesh mesh)
+                |> Array.toList
+                |> List.indexedMap mapVertex
+                |> Array.fromList
+    in
+    Mesh
+        { vertices = verticesOut
+        , atVertex = mesh.atVertex
+        , alongFace = mesh.alongFace
+        , next = mesh.next
+        , toFace = mesh.toFace
+        }
 
 
 

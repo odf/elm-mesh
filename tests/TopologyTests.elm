@@ -7,10 +7,12 @@ module TopologyTests exposing
     , orientationMismatch
     , toTriangular
     , unpairedOrientedEdge
+    , withNormals
     )
 
 import Array exposing (Array)
 import Expect
+import Math.Vector3 exposing (Vec3, vec3)
 import Mesh.Topology as Topology
 import Test exposing (Test)
 import TriangularMesh
@@ -32,6 +34,34 @@ octahedronFaces =
     , [ 4, 5, 0 ]
     , [ 3, 4, 2 ]
     ]
+
+
+octahedron : Topology.Mesh Vec3
+octahedron =
+    let
+        vertices =
+            Array.fromList
+                [ vec3 1 0 0
+                , vec3 0 1 0
+                , vec3 0 0 1
+                , vec3 -1 0 0
+                , vec3 0 -1 0
+                , vec3 0 0 -1
+                ]
+
+        faceIndices =
+            [ [ 0, 1, 2 ]
+            , [ 1, 0, 5 ]
+            , [ 2, 1, 3 ]
+            , [ 0, 2, 4 ]
+            , [ 3, 5, 4 ]
+            , [ 5, 3, 1 ]
+            , [ 4, 5, 0 ]
+            , [ 3, 4, 2 ]
+            ]
+    in
+    Topology.fromOrientedFaces vertices faceIndices
+        |> Result.withDefault Topology.empty
 
 
 empty : Test
@@ -280,5 +310,21 @@ combine =
                             , [ 4, 7, 5 ]
                             , [ 5, 7, 6 ]
                             ]
+                    ]
+        )
+
+
+withNormals : Test
+withNormals =
+    Test.test "withNormals"
+        (\() ->
+            octahedron
+                |> Topology.withNormals identity Tuple.pair
+                |> Expect.all
+                    [ Topology.vertices
+                        >> Array.map Tuple.second
+                        >> Expect.equal (Topology.vertices octahedron)
+                    , Topology.faceIndices
+                        >> Expect.equal (Topology.faceIndices octahedron)
                     ]
         )
