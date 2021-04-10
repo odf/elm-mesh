@@ -8,6 +8,7 @@ module Mesh.Topology exposing
     , fromOrientedFaces
     , fromTriangularMesh
     , neighborIndices
+    , neighborVertices
     , toTriangularMesh
     , vertices
     )
@@ -187,12 +188,17 @@ vertexNeighbors start (Mesh mesh) =
     step [] start
 
 
-neighborIndices : Int -> Mesh vertex -> List Int
-neighborIndices vertexIndex (Mesh mesh) =
-    Array.get vertexIndex mesh.atVertex
-        |> Maybe.map (\start -> vertexNeighbors start (Mesh mesh))
-        |> Maybe.withDefault []
-        |> canonicalCircular
+neighborIndices : Mesh vertex -> Array (List Int)
+neighborIndices (Mesh mesh) =
+    Array.toList mesh.atVertex
+        |> List.map (\start -> vertexNeighbors start (Mesh mesh))
+        |> List.map canonicalCircular
+        |> Array.fromList
+
+
+neighborVertices : Mesh vertex -> Array (List vertex)
+neighborVertices mesh =
+    neighborIndices mesh |> Array.map (List.filterMap (\i -> vertex i mesh))
 
 
 toTriangularMesh : Mesh vertex -> TriangularMesh vertex
