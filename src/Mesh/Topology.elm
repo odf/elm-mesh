@@ -18,19 +18,15 @@ import TriangularMesh exposing (TriangularMesh)
 type Mesh vertex
     = Mesh
         { vertices : Array vertex
-        , next : Dict OrientedEdge OrientedEdge
         , atVertex : Array OrientedEdge
-        , alongFace : Dict FaceKey OrientedEdge
-        , toFace : Dict OrientedEdge FaceKey
+        , alongFace : Array OrientedEdge
+        , next : Dict OrientedEdge OrientedEdge
+        , toFace : Dict OrientedEdge Int
         }
 
 
 type alias OrientedEdge =
     ( Int, Int )
-
-
-type alias FaceKey =
-    Int
 
 
 opposite : OrientedEdge -> OrientedEdge
@@ -42,9 +38,9 @@ empty : Mesh vertex
 empty =
     Mesh
         { vertices = Array.empty
-        , next = Dict.empty
         , atVertex = Array.empty
-        , alongFace = Dict.empty
+        , alongFace = Array.empty
+        , next = Dict.empty
         , toFace = Dict.empty
         }
 
@@ -81,6 +77,8 @@ fromOrientedFaces vertexData faceLists =
             Dict.toList toFace
                 |> List.map (\( key, val ) -> ( val, key ))
                 |> Dict.fromList
+                |> Dict.values
+                |> Array.fromList
 
         seen e =
             Dict.member e toFace
@@ -95,9 +93,9 @@ fromOrientedFaces vertexData faceLists =
         Ok
             (Mesh
                 { vertices = vertexData
-                , next = next
                 , atVertex = fromVertex
                 , alongFace = fromFace
+                , next = next
                 , toFace = toFace
                 }
             )
@@ -137,7 +135,7 @@ verticesInFace start (Mesh mesh) =
 
 faceIndices : Mesh vertex -> List (List Int)
 faceIndices (Mesh mesh) =
-    Dict.values mesh.alongFace
+    Array.toList mesh.alongFace
         |> List.map (\start -> verticesInFace start (Mesh mesh))
         |> List.map canonicalCircular
 
