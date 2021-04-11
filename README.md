@@ -41,7 +41,26 @@ like a pillow. The first face, `[ 0, 1, 2, 3 ]`, contains four directed
 edges described by the index pairs `( 0, 1 )`, `( 1, 2 )`, `( 2, 3 )`, and
 `( 3, 0 )`, the last one connecting the final vertex back to the first one
 and thus closing up the face. Similarly, the second face contains the
-directed edges `( 3, 2 )`, `( 2, 1 )`, `( 1, 0 )`, and `( 0, 3 )`. It is
-easy to see that each pair in the first list is matched by one in the second
-list with its first and second value, or in other words its beginning and
-end, flipped.
+directed edges `( 3, 2 )`, `( 2, 1 )`, `( 1, 0 )`, and `( 0, 3 )`. Each pair
+in the first list is matched by one in the second list with its first and
+second value, or in other words its beginning and end, flipped.
+
+We can then retrieve the list of (undirected) edges described by their
+indices like this
+```elm
+Mesh.edgeIndices mesh
+--> [ ( 0, 1 )
+--> , ( 0, 3 )
+--> , ( 1, 2 )
+--> , ( 2, 3 )
+--> ]
+```
+or as vertices like this
+```elm
+Mesh.edgeVertices mesh
+--> [ ( ( 0, 0 ), ( 4, 0 ) )
+--> , ( ( 0, 0 ), ( 0, 3 ) )
+--> , ( ( 4, 0 ), ( 4, 3 ) )
+--> , ( ( 4, 3 ), ( 0, 3 ) )
+--> ]
+```
