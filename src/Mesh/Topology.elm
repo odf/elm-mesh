@@ -20,6 +20,7 @@ module Mesh.Topology exposing
 import Array exposing (Array)
 import Dict exposing (Dict)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
+import Set
 import TriangularMesh exposing (TriangularMesh)
 
 
@@ -52,11 +53,8 @@ empty =
         }
 
 
-fromOrientedFaces :
-    Array vertex
-    -> List (List Int)
-    -> Result String (Mesh vertex)
-fromOrientedFaces vertexData faceLists =
+fromOrientedFacesUnchecked : Array vertex -> List (List Int) -> Mesh vertex
+fromOrientedFacesUnchecked vertexData faceLists =
     let
         orientedEdgeLists =
             List.map cyclicPairs faceLists
@@ -86,25 +84,38 @@ fromOrientedFaces vertexData faceLists =
                 |> Dict.fromList
                 |> Dict.values
                 |> Array.fromList
+    in
+    Mesh vertexData
+        { atVertex = fromVertex
+        , alongFace = fromFace
+        , next = next
+        , toFace = toFace
+        }
+
+
+fromOrientedFaces :
+    Array vertex
+    -> List (List Int)
+    -> Result String (Mesh vertex)
+fromOrientedFaces vertexData faceLists =
+    let
+        orientedEdges =
+            List.map cyclicPairs faceLists |> List.concat
+
+        orientedEdgeSet =
+            Set.fromList orientedEdges
 
         seen e =
-            Dict.member e toFace
+            Set.member e orientedEdgeSet
     in
-    if findDuplicate orientedEdges /= Nothing then
+    if Set.size orientedEdgeSet < List.length orientedEdges then
         Err "each oriented edge must be unique"
 
     else if List.any (opposite >> seen >> not) orientedEdges then
         Err "each oriented edge must have a reverse"
 
     else
-        Ok
-            (Mesh vertexData
-                { atVertex = fromVertex
-                , alongFace = fromFace
-                , next = next
-                , toFace = toFace
-                }
-            )
+        Ok (fromOrientedFacesUnchecked vertexData faceLists)
 
 
 vertices : Mesh vertex -> Array vertex
@@ -244,8 +255,7 @@ combine meshes =
                 _ ->
                     []
     in
-    fromOrientedFaces vertices_ (makeFaces 0 meshes)
-        |> Result.withDefault empty
+    fromOrientedFacesUnchecked vertices_ (makeFaces 0 meshes)
 
 
 withNormals : (a -> Vec3) -> (a -> Vec3 -> b) -> Mesh a -> Mesh b
@@ -289,24 +299,6 @@ triangulate corners =
 
         _ ->
             []
-
-
-findDuplicate : List comparable -> Maybe comparable
-findDuplicate =
-    let
-        findDupe list =
-            case list of
-                first :: second :: rest ->
-                    if first == second then
-                        Just first
-
-                    else
-                        findDupe (second :: rest)
-
-                _ ->
-                    Nothing
-    in
-    List.sort >> findDupe
 
 
 cyclicPairs : List a -> List ( a, a )
