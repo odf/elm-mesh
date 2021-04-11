@@ -11,6 +11,7 @@ module Mesh.Topology exposing
     , mapVertices
     , neighborIndices
     , neighborVertices
+    , smoothSubdivision
     , subdivision
     , toTriangularMesh
     , vertex
@@ -320,11 +321,11 @@ subdivision composeFn (Mesh verts mesh) =
                 ( _, w ) =
                     Dict.get ( u, v ) mesh.next |> Maybe.withDefault ( v, u )
             in
-            [ Dict.get ( u, v ) midPointIndex
-            , Just v
+            [ Just v
             , Dict.get ( v, w ) midPointIndex
             , Dict.get ( u, v ) mesh.toFace
                 |> Maybe.map ((+) (nrVertices + nrEdges))
+            , Dict.get ( u, v ) midPointIndex
             ]
                 |> List.filterMap identity
 
@@ -332,6 +333,121 @@ subdivision composeFn (Mesh verts mesh) =
             List.map subFace (Dict.keys mesh.next)
     in
     fromOrientedFacesUnchecked vertsOut facesOut
+
+
+getAll : List Int -> Array a -> List a
+getAll indices array =
+    List.filterMap (\i -> Array.get i array) indices
+
+
+centroid : List Vec3 -> Vec3
+centroid points =
+    List.foldl Vec3.add (vec3 0 0 0) points
+        |> Vec3.scale (1 / toFloat (List.length points))
+
+
+smoothSubdivision :
+    (vertex -> Bool)
+    -> (vertex -> Vec3)
+    -> (List vertex -> Vec3 -> vertex)
+    -> Mesh vertex
+    -> Mesh vertex
+smoothSubdivision isFixed vertexPosition toOutputVertex meshIn =
+    let
+        verticesIn =
+            vertices meshIn
+
+        nrVertices =
+            Array.length verticesIn
+
+        nrEdges =
+            List.length (edgeIndices meshIn)
+
+        makeOutputVertex indices pos =
+            toOutputVertex (getAll indices verticesIn) pos
+
+        meshSub =
+            meshIn
+                |> mapVertices vertexPosition
+                |> subdivision centroid
+
+        subFaceIndices =
+            faceIndices meshSub
+
+        makeFacePoint k vs =
+            vertex (k + nrVertices + nrEdges) meshSub
+                |> Maybe.map (makeOutputVertex vs)
+
+        facePoints =
+            subFaceIndices
+                |> List.indexedMap makeFacePoint
+                |> List.filterMap identity
+
+        neighborsSub =
+            neighborIndices meshSub
+
+        edgePointPosition i =
+            Array.get (i + nrVertices) neighborsSub
+                |> Maybe.withDefault [ i + nrVertices ]
+                |> List.filterMap (\k -> vertex k meshSub)
+                |> centroid
+
+        makeEdgePoint i ( u, v ) =
+            edgePointPosition i
+                |> makeOutputVertex [ u, v ]
+
+        edgePointPos =
+            edgeIndices meshIn
+                |> List.indexedMap (\i _ -> edgePointPosition i)
+                |> Array.fromList
+
+        edgePoints =
+            edgeIndices meshIn
+                |> List.indexedMap makeEdgePoint
+
+        makeVertexPoint i =
+            let
+                posIn =
+                    vertex i meshSub |> Maybe.withDefault (vec3 0 0 0)
+
+                neighbors =
+                    Array.get i neighborsSub |> Maybe.withDefault []
+
+                nrNeighbors =
+                    List.length neighbors
+
+                centroidOfEdgeCenters =
+                    neighbors
+                        |> List.filterMap (\k -> vertex k meshSub)
+                        |> centroid
+
+                centroidOfEdgePoints =
+                    neighbors
+                        |> List.map (\k -> k - nrVertices)
+                        |> List.filterMap (\k -> Array.get k edgePointPos)
+                        |> centroid
+            in
+            if
+                Array.get i verticesIn
+                    |> Maybe.map isFixed
+                    |> Maybe.withDefault False
+            then
+                makeOutputVertex [ i ] posIn
+
+            else
+                Vec3.scale (toFloat nrNeighbors - 3) posIn
+                    |> Vec3.add centroidOfEdgeCenters
+                    |> Vec3.add (Vec3.scale 2 centroidOfEdgePoints)
+                    |> Vec3.scale (1 / toFloat nrNeighbors)
+                    |> makeOutputVertex [ i ]
+
+        vertexPoints =
+            List.range 0 (nrVertices - 1) |> List.map makeVertexPoint
+
+        verticesOut =
+            Array.fromList (vertexPoints ++ edgePoints ++ facePoints)
+    in
+    fromOrientedFacesUnchecked verticesOut subFaceIndices
 
 
 

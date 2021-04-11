@@ -5,6 +5,7 @@ module TopologyTests exposing
     , goodFaceList
     , mapVertices
     , orientationMismatch
+    , smoothSubdivision
     , subdivide
     , toTriangular
     , unpairedOrientedEdge
@@ -399,6 +400,64 @@ subdivide =
                             , ( 3, 0, 3 )
                             , ( 3, 3, 0 )
                             , ( 6, 0, 0 )
+                            ]
+                    ]
+        )
+
+
+smoothSubdivision : Test
+smoothSubdivision =
+    Test.test "smoothSubdivision"
+        (\() ->
+            let
+                baseMesh =
+                    octahedron
+
+                simpleSubdivision =
+                    Topology.subdivision centroid baseMesh
+            in
+            baseMesh
+                |> Topology.mapVertices (Vec3.scale 12)
+                |> Topology.smoothSubdivision
+                    (always False)
+                    identity
+                    (\_ position -> position)
+                |> Expect.all
+                    [ Topology.faceIndices
+                        >> Expect.equal
+                            (Topology.faceIndices simpleSubdivision)
+                    , Topology.vertices
+                        >> Array.toList
+                        >> List.map
+                            (\p -> ( Vec3.getX p, Vec3.getY p, Vec3.getZ p ))
+                        >> List.sort
+                        >> Expect.equalLists
+                            [ ( -7, 0, 0 )
+                            , ( -5, -5, 0 )
+                            , ( -5, 0, -5 )
+                            , ( -5, 0, 5 )
+                            , ( -5, 5, 0 )
+                            , ( -4, -4, -4 )
+                            , ( -4, -4, 4 )
+                            , ( -4, 4, -4 )
+                            , ( -4, 4, 4 )
+                            , ( 0, -7, 0 )
+                            , ( 0, -5, -5 )
+                            , ( 0, -5, 5 )
+                            , ( 0, 0, -7 )
+                            , ( 0, 0, 7 )
+                            , ( 0, 5, -5 )
+                            , ( 0, 5, 5 )
+                            , ( 0, 7, 0 )
+                            , ( 4, -4, -4 )
+                            , ( 4, -4, 4 )
+                            , ( 4, 4, -4 )
+                            , ( 4, 4, 4 )
+                            , ( 5, -5, 0 )
+                            , ( 5, 0, -5 )
+                            , ( 5, 0, 5 )
+                            , ( 5, 5, 0 )
+                            , ( 7, 0, 0 )
                             ]
                     ]
         )
