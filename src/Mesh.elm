@@ -1,4 +1,4 @@
-module Mesh.Topology exposing
+module Mesh exposing
     ( Mesh
     , combine
     , edgeIndices

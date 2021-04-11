@@ -1,4 +1,4 @@
-module TopologyTests exposing
+module MeshTests exposing
     ( combine
     , empty
     , fromTriangular
@@ -15,7 +15,7 @@ module TopologyTests exposing
 import Array exposing (Array)
 import Expect
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
-import Mesh.Topology as Topology
+import Mesh
 import Test exposing (Test)
 import TriangularMesh
 
@@ -38,7 +38,7 @@ octahedronFaces =
     ]
 
 
-octahedron : Topology.Mesh Vec3
+octahedron : Mesh.Mesh Vec3
 octahedron =
     let
         vertices =
@@ -62,19 +62,19 @@ octahedron =
             , [ 3, 4, 2 ]
             ]
     in
-    Topology.fromOrientedFaces vertices faceIndices
-        |> Result.withDefault Topology.empty
+    Mesh.fromOrientedFaces vertices faceIndices
+        |> Result.withDefault Mesh.empty
 
 
 empty : Test
 empty =
     Test.test "empty"
         (\() ->
-            Topology.empty
+            Mesh.empty
                 |> Expect.all
-                    [ Topology.vertices >> Array.toList >> Expect.equal []
-                    , Topology.edgeIndices >> Expect.equal []
-                    , Topology.faceIndices >> Expect.equal []
+                    [ Mesh.vertices >> Array.toList >> Expect.equal []
+                    , Mesh.edgeIndices >> Expect.equal []
+                    , Mesh.faceIndices >> Expect.equal []
                     ]
         )
 
@@ -84,12 +84,12 @@ goodFaceList =
     Test.test "goodFaceList"
         (\() ->
             octahedronFaces
-                |> Topology.fromOrientedFaces octahedronVertices
-                |> Result.withDefault Topology.empty
+                |> Mesh.fromOrientedFaces octahedronVertices
+                |> Result.withDefault Mesh.empty
                 |> Expect.all
-                    [ Topology.vertices
+                    [ Mesh.vertices
                         >> Expect.equal octahedronVertices
-                    , Topology.edgeIndices
+                    , Mesh.edgeIndices
                         >> Expect.equal
                             [ ( 0, 1 )
                             , ( 0, 2 )
@@ -104,7 +104,7 @@ goodFaceList =
                             , ( 3, 5 )
                             , ( 4, 5 )
                             ]
-                    , Topology.edgeVertices
+                    , Mesh.edgeVertices
                         >> Expect.equal
                             [ ( "front", "right" )
                             , ( "front", "top" )
@@ -119,7 +119,7 @@ goodFaceList =
                             , ( "back", "bottom" )
                             , ( "left", "bottom" )
                             ]
-                    , Topology.faceIndices
+                    , Mesh.faceIndices
                         >> List.sort
                         >> Expect.equal
                             [ [ 0, 1, 2 ]
@@ -131,7 +131,7 @@ goodFaceList =
                             , [ 2, 3, 4 ]
                             , [ 3, 5, 4 ]
                             ]
-                    , Topology.faceVertices
+                    , Mesh.faceVertices
                         >> List.sort
                         >> Expect.equal
                             [ [ "back", "bottom", "left" ]
@@ -143,7 +143,7 @@ goodFaceList =
                             , [ "right", "bottom", "back" ]
                             , [ "top", "back", "left" ]
                             ]
-                    , Topology.neighborIndices
+                    , Mesh.neighborIndices
                         >> Array.toList
                         >> Expect.equal
                             [ [ 1, 2, 4, 5 ]
@@ -153,7 +153,7 @@ goodFaceList =
                             , [ 0, 2, 3, 5 ]
                             , [ 0, 4, 3, 1 ]
                             ]
-                    , Topology.neighborVertices
+                    , Mesh.neighborVertices
                         >> Array.toList
                         >> Expect.equal
                             [ [ "right", "top", "left", "bottom" ]
@@ -173,7 +173,7 @@ unpairedOrientedEdge =
         (\() ->
             octahedronFaces
                 |> List.drop 1
-                |> Topology.fromOrientedFaces octahedronVertices
+                |> Mesh.fromOrientedFaces octahedronVertices
                 |> Expect.err
         )
 
@@ -185,7 +185,7 @@ orientationMismatch =
             octahedronFaces
                 |> List.drop 1
                 |> (::) [ 0, 2, 1 ]
-                |> Topology.fromOrientedFaces octahedronVertices
+                |> Mesh.fromOrientedFaces octahedronVertices
                 |> Expect.err
         )
 
@@ -195,10 +195,10 @@ toTriangular =
     Test.test "toTriangular"
         (\() ->
             [ [ 0, 1, 2, 3 ], [ 3, 2, 1, 0 ] ]
-                |> Topology.fromOrientedFaces
+                |> Mesh.fromOrientedFaces
                     (Array.fromList [ 'a', 'b', 'c', 'd' ])
-                |> Result.withDefault Topology.empty
-                |> Topology.toTriangularMesh
+                |> Result.withDefault Mesh.empty
+                |> Mesh.toTriangularMesh
                 |> Expect.all
                     [ TriangularMesh.vertices
                         >> Array.toList
@@ -236,13 +236,13 @@ fromTriangular =
                 , ( 4, 5, 0 )
                 , ( 3, 4, 2 )
                 ]
-                |> Topology.fromTriangularMesh
-                |> Result.withDefault Topology.empty
+                |> Mesh.fromTriangularMesh
+                |> Result.withDefault Mesh.empty
                 |> Expect.all
-                    [ Topology.vertices
+                    [ Mesh.vertices
                         >> Array.toList
                         >> Expect.equal [ 'a', 'b', 'c', 'd', 'e', 'f' ]
-                    , Topology.faceIndices
+                    , Mesh.faceIndices
                         >> List.sort
                         >> Expect.equal
                             [ [ 0, 1, 2 ]
@@ -254,7 +254,7 @@ fromTriangular =
                             , [ 2, 3, 4 ]
                             , [ 3, 5, 4 ]
                             ]
-                    , Topology.faceVertices
+                    , Mesh.faceVertices
                         >> List.sort
                         >> Expect.equal
                             [ [ 'a', 'b', 'c' ]
@@ -274,11 +274,11 @@ mapVertices : Test
 mapVertices =
     Test.test "mapVertices"
         (\() ->
-            Topology.fromOrientedFaces octahedronVertices octahedronFaces
-                |> Result.withDefault Topology.empty
-                |> Topology.mapVertices (String.slice 0 2 >> String.toUpper)
+            Mesh.fromOrientedFaces octahedronVertices octahedronFaces
+                |> Result.withDefault Mesh.empty
+                |> Mesh.mapVertices (String.slice 0 2 >> String.toUpper)
                 |> Expect.all
-                    [ Topology.vertices
+                    [ Mesh.vertices
                         >> Array.toList
                         >> Expect.equal [ "FR", "RI", "TO", "BA", "LE", "BO" ]
                     ]
@@ -289,19 +289,19 @@ combine : Test
 combine =
     let
         tetra =
-            Topology.fromOrientedFaces
+            Mesh.fromOrientedFaces
                 (Array.fromList [ 0, 1, 2, 3 ])
                 [ [ 0, 1, 2 ], [ 0, 2, 3 ], [ 0, 3, 1 ], [ 3, 2, 1 ] ]
-                |> Result.withDefault Topology.empty
+                |> Result.withDefault Mesh.empty
     in
     Test.test "combine"
         (\() ->
-            Topology.combine [ tetra, Topology.mapVertices ((+) 4) tetra ]
+            Mesh.combine [ tetra, Mesh.mapVertices ((+) 4) tetra ]
                 |> Expect.all
-                    [ Topology.vertices
+                    [ Mesh.vertices
                         >> Array.toList
                         >> Expect.equal [ 0, 1, 2, 3, 4, 5, 6, 7 ]
-                    , Topology.faceIndices
+                    , Mesh.faceIndices
                         >> Expect.equal
                             [ [ 0, 1, 2 ]
                             , [ 0, 2, 3 ]
@@ -321,13 +321,13 @@ withNormals =
     Test.test "withNormals"
         (\() ->
             octahedron
-                |> Topology.withNormals identity Tuple.pair
+                |> Mesh.withNormals identity Tuple.pair
                 |> Expect.all
-                    [ Topology.vertices
+                    [ Mesh.vertices
                         >> Array.map Tuple.second
-                        >> Expect.equal (Topology.vertices octahedron)
-                    , Topology.faceIndices
-                        >> Expect.equal (Topology.faceIndices octahedron)
+                        >> Expect.equal (Mesh.vertices octahedron)
+                    , Mesh.faceIndices
+                        >> Expect.equal (Mesh.faceIndices octahedron)
                     ]
         )
 
@@ -343,32 +343,32 @@ subdivide =
     Test.test "subdivide"
         (\() ->
             octahedron
-                |> Topology.mapVertices (Vec3.scale 6)
-                |> Topology.subdivision centroid
+                |> Mesh.mapVertices (Vec3.scale 6)
+                |> Mesh.subdivision centroid
                 |> Expect.all
-                    [ Topology.vertices
+                    [ Mesh.vertices
                         >> Array.length
                         >> Expect.equal 26
-                    , Topology.edgeIndices
+                    , Mesh.edgeIndices
                         >> List.length
                         >> Expect.equal 48
-                    , Topology.faceIndices
+                    , Mesh.faceIndices
                         >> List.length
                         >> Expect.equal 24
-                    , Topology.faceIndices
+                    , Mesh.faceIndices
                         >> List.map List.length
                         >> Expect.equal (List.repeat 24 4)
-                    , Topology.faceIndices
+                    , Mesh.faceIndices
                         >> List.map (List.filter (\i -> i < 6) >> List.length)
                         >> Expect.equal (List.repeat 24 1)
-                    , Topology.faceIndices
+                    , Mesh.faceIndices
                         >> List.map (List.filter (\i -> i < 18) >> List.length)
                         >> Expect.equal (List.repeat 24 3)
-                    , Topology.neighborIndices
+                    , Mesh.neighborIndices
                         >> Array.toList
                         >> List.map List.length
                         >> Expect.equal (List.repeat 18 4 ++ List.repeat 8 3)
-                    , Topology.vertices
+                    , Mesh.vertices
                         >> Array.toList
                         >> List.map
                             (\p -> ( Vec3.getX p, Vec3.getY p, Vec3.getZ p ))
@@ -414,19 +414,19 @@ smoothSubdivision =
                     octahedron
 
                 simpleSubdivision =
-                    Topology.subdivision centroid baseMesh
+                    Mesh.subdivision centroid baseMesh
             in
             baseMesh
-                |> Topology.mapVertices (Vec3.scale 12)
-                |> Topology.smoothSubdivision
+                |> Mesh.mapVertices (Vec3.scale 12)
+                |> Mesh.smoothSubdivision
                     (always False)
                     identity
                     (\_ position -> position)
                 |> Expect.all
-                    [ Topology.faceIndices
+                    [ Mesh.faceIndices
                         >> Expect.equal
-                            (Topology.faceIndices simpleSubdivision)
-                    , Topology.vertices
+                            (Mesh.faceIndices simpleSubdivision)
+                    , Mesh.vertices
                         >> Array.toList
                         >> List.map
                             (\p -> ( Vec3.getX p, Vec3.getY p, Vec3.getZ p ))
