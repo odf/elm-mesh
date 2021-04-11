@@ -5,6 +5,7 @@ module TopologyTests exposing
     , goodFaceList
     , mapVertices
     , orientationMismatch
+    , subdivide
     , toTriangular
     , unpairedOrientedEdge
     , withNormals
@@ -12,7 +13,7 @@ module TopologyTests exposing
 
 import Array exposing (Array)
 import Expect
-import Math.Vector3 exposing (Vec3, vec3)
+import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Mesh.Topology as Topology
 import Test exposing (Test)
 import TriangularMesh
@@ -326,5 +327,78 @@ withNormals =
                         >> Expect.equal (Topology.vertices octahedron)
                     , Topology.faceIndices
                         >> Expect.equal (Topology.faceIndices octahedron)
+                    ]
+        )
+
+
+centroid : List Vec3 -> Vec3
+centroid points =
+    List.foldl Vec3.add (vec3 0 0 0) points
+        |> Vec3.scale (1 / toFloat (List.length points))
+
+
+subdivide : Test
+subdivide =
+    Test.test "subdivide"
+        (\() ->
+            octahedron
+                |> Topology.mapVertices (Vec3.scale 6)
+                |> Topology.subdivision centroid
+                |> Expect.all
+                    [ Topology.vertices
+                        >> Array.length
+                        >> Expect.equal 26
+                    , Topology.edgeIndices
+                        >> List.length
+                        >> Expect.equal 48
+                    , Topology.faceIndices
+                        >> List.length
+                        >> Expect.equal 24
+                    , Topology.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 24 4)
+                    , Topology.faceIndices
+                        >> List.map (List.filter (\i -> i < 6) >> List.length)
+                        >> Expect.equal (List.repeat 24 1)
+                    , Topology.faceIndices
+                        >> List.map (List.filter (\i -> i < 18) >> List.length)
+                        >> Expect.equal (List.repeat 24 3)
+                    , Topology.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 18 4 ++ List.repeat 8 3)
+                    , Topology.vertices
+                        >> Array.toList
+                        >> List.map
+                            (\p -> ( Vec3.getX p, Vec3.getY p, Vec3.getZ p ))
+                        >> List.sort
+                        >> Expect.equalLists
+                            [ ( -6, 0, 0 )
+                            , ( -3, -3, 0 )
+                            , ( -3, 0, -3 )
+                            , ( -3, 0, 3 )
+                            , ( -3, 3, 0 )
+                            , ( -2, -2, -2 )
+                            , ( -2, -2, 2 )
+                            , ( -2, 2, -2 )
+                            , ( -2, 2, 2 )
+                            , ( 0, -6, 0 )
+                            , ( 0, -3, -3 )
+                            , ( 0, -3, 3 )
+                            , ( 0, 0, -6 )
+                            , ( 0, 0, 6 )
+                            , ( 0, 3, -3 )
+                            , ( 0, 3, 3 )
+                            , ( 0, 6, 0 )
+                            , ( 2, -2, -2 )
+                            , ( 2, -2, 2 )
+                            , ( 2, 2, -2 )
+                            , ( 2, 2, 2 )
+                            , ( 3, -3, 0 )
+                            , ( 3, 0, -3 )
+                            , ( 3, 0, 3 )
+                            , ( 3, 3, 0 )
+                            , ( 6, 0, 0 )
+                            ]
                     ]
         )

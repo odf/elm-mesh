@@ -11,6 +11,7 @@ module Mesh.Topology exposing
     , mapVertices
     , neighborIndices
     , neighborVertices
+    , subdivision
     , toTriangularMesh
     , vertex
     , vertices
@@ -285,6 +286,52 @@ withNormals toPositionIn toVertexOut (Mesh verts mesh) =
                 |> Array.fromList
     in
     Mesh verticesOut mesh
+
+
+subdivision : (List vertex -> vertex) -> Mesh vertex -> Mesh vertex
+subdivision composeFn (Mesh verts mesh) =
+    let
+        allEdges =
+            edgeIndices (Mesh verts mesh)
+
+        nrVertices =
+            Array.length mesh.atVertex
+
+        nrEdges =
+            List.length allEdges
+
+        midPointIndex =
+            List.indexedMap (\i e -> ( e, i + nrVertices )) allEdges
+                |> List.concatMap
+                    (\( ( u, v ), i ) -> [ ( ( u, v ), i ), ( ( v, u ), i ) ])
+                |> Dict.fromList
+
+        vertsOut =
+            ((List.range 0 (nrVertices - 1) |> List.map List.singleton)
+                ++ (allEdges |> List.map (\( u, v ) -> [ u, v ]))
+                ++ faceIndices (Mesh verts mesh)
+            )
+                |> List.map
+                    (List.filterMap (\i -> Array.get i verts) >> composeFn)
+                |> Array.fromList
+
+        subFace ( u, v ) =
+            let
+                ( _, w ) =
+                    Dict.get ( u, v ) mesh.next |> Maybe.withDefault ( v, u )
+            in
+            [ Dict.get ( u, v ) midPointIndex
+            , Just v
+            , Dict.get ( v, w ) midPointIndex
+            , Dict.get ( u, v ) mesh.toFace
+                |> Maybe.map ((+) (nrVertices + nrEdges))
+            ]
+                |> List.filterMap identity
+
+        facesOut =
+            List.map subFace (Dict.keys mesh.next)
+    in
+    fromOrientedFacesUnchecked vertsOut facesOut
 
 
 
