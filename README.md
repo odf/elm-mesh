@@ -7,13 +7,11 @@ and generally works in a very similar way. A mesh contains an array of vertices
 that can be of any type; the faces of a mesh are defined by lists of integer
 indices specifying which vertices makes up the face.
 
-There are however a few important differences:
+There are however two important differences:
   * Faces can have three or more vertices, not just three.
-  * Each edge must appear in exactly two faces.
-  * Faces must be oriented consistently.
+  * Each edge must appear in exactly two faces, and in opposite directions.
 
-The last two properties are best explained by an example, here a mesh that
-contains two rectangles put together back to back like a pillow:
+The second property is best explained by an example:
 
 ```elm
 import Mesh exposing (Mesh)
@@ -38,4 +36,12 @@ mesh =
     Mesh.fromOrientedFaces vertices faceIndices
 ```
 
-            
+This creates a mesh that contains two rectangles put together back to back
+like a pillow. The first face, `[ 0, 1, 2, 3 ]`, contains four directed
+edges described by the index pairs `( 0, 1 )`, `( 1, 2 )`, `( 2, 3 )`, and
+`( 3, 0 )`, the last one connecting the final vertex back to the first one
+and thus closing up the face. Similarly, the second face contains the
+directed edges `( 3, 2 )`, `( 2, 1 )`, `( 1, 0 )`, and `( 0, 3 )`. It is
+easy to see that each pair in the first list is matched by one in the second
+list with its first and second value, or in other words its beginning and
+end, flipped.
