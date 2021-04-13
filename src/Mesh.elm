@@ -1,23 +1,55 @@
 module Mesh exposing
     ( Mesh
-    , combine
-    , edgeIndices
-    , edgeVertices
     , empty
-    , faceIndices
-    , faceVertices
-    , fromOrientedFaces
-    , fromTriangularMesh
-    , mapVertices
-    , neighborIndices
-    , neighborVertices
-    , smoothSubdivision
-    , subdivision
+    , fromTriangularMesh, fromOrientedFaces
+    , combine
+    , vertices, vertex, faceIndices, faceVertices
+    , edgeIndices, edgeVertices, neighborIndices, neighborVertices
+    , mapVertices, withNormals, subdivide, subdivideSmoothly
     , toTriangularMesh
-    , vertex
-    , vertices
-    , withNormals
     )
+
+{-| This module provides functions for working with indexed meshes.
+You can:
+
+  - Construct meshes from vertices and face indices
+  - Extract vertices, faces and edges in various ways
+  - Combine multiple meshes into a single mesh
+
+@docs Mesh
+
+
+# Constants
+
+@docs empty
+
+
+# Constructors
+
+@docs fromTriangularMesh, fromOrientedFaces
+
+
+# Combining meshes
+
+@docs combine
+
+
+# Properties
+
+@docs vertices, vertex, faceIndices, faceVertices
+@docs edgeIndices, edgeVertices, neighborIndices, neighborVertices
+
+
+# Transformations
+
+@docs mapVertices, withNormals, subdivide, subdivideSmoothly
+
+
+# Exporting
+
+@docs toTriangularMesh
+
+-}
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -289,8 +321,8 @@ withNormals toPositionIn toVertexOut (Mesh verts mesh) =
     Mesh verticesOut mesh
 
 
-subdivision : (List vertex -> vertex) -> Mesh vertex -> Mesh vertex
-subdivision composeFn (Mesh verts mesh) =
+subdivide : (List vertex -> vertex) -> Mesh vertex -> Mesh vertex
+subdivide composeFn (Mesh verts mesh) =
     let
         allEdges =
             edgeIndices (Mesh verts mesh)
@@ -346,13 +378,13 @@ centroid points =
         |> Vec3.scale (1 / toFloat (List.length points))
 
 
-smoothSubdivision :
+subdivideSmoothly :
     (vertex -> Bool)
     -> (vertex -> Vec3)
     -> (List vertex -> Vec3 -> vertex)
     -> Mesh vertex
     -> Mesh vertex
-smoothSubdivision isFixed vertexPosition toOutputVertex meshIn =
+subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
     let
         verticesIn =
             vertices meshIn
@@ -369,7 +401,7 @@ smoothSubdivision isFixed vertexPosition toOutputVertex meshIn =
         meshSub =
             meshIn
                 |> mapVertices vertexPosition
-                |> subdivision centroid
+                |> subdivide centroid
 
         subFaceIndices =
             faceIndices meshSub

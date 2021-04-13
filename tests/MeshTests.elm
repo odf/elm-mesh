@@ -5,8 +5,8 @@ module MeshTests exposing
     , goodFaceList
     , mapVertices
     , orientationMismatch
-    , smoothSubdivision
     , subdivide
+    , subdivideSmoothly
     , toTriangular
     , unpairedOrientedEdge
     , withNormals
@@ -344,7 +344,7 @@ subdivide =
         (\() ->
             octahedron
                 |> Mesh.mapVertices (Vec3.scale 6)
-                |> Mesh.subdivision centroid
+                |> Mesh.subdivide centroid
                 |> Expect.all
                     [ Mesh.vertices
                         >> Array.length
@@ -405,20 +405,20 @@ subdivide =
         )
 
 
-smoothSubdivision : Test
-smoothSubdivision =
-    Test.test "smoothSubdivision"
+subdivideSmoothly : Test
+subdivideSmoothly =
+    Test.test "subdivideSmoothly"
         (\() ->
             let
                 baseMesh =
                     octahedron
 
                 simpleSubdivision =
-                    Mesh.subdivision centroid baseMesh
+                    Mesh.subdivide centroid baseMesh
             in
             baseMesh
                 |> Mesh.mapVertices (Vec3.scale 12)
-                |> Mesh.smoothSubdivision
+                |> Mesh.subdivideSmoothly
                     (always False)
                     identity
                     (\_ position -> position)
