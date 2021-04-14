@@ -265,8 +265,8 @@ verticesInFace start (Mesh _ mesh) =
 {-| Get the faces of a mesh as lists of vertex indices. Each face is
 normalized so that its smallest vertex index comes first.
 
-    Mesh.faceIndices pyramid |> List.sort
-    --> [ [ 0, 1, 2, 3 ], [ 0, 3, 4 ], [ 0, 4, 1 ], [ 1, 4, 2 ], [ 2, 4, 3 ] ]
+    Mesh.faceIndices pyramid
+    --> [ [ 0, 1, 2, 3 ], [ 0, 4, 1 ], [ 1, 4, 2 ], [ 2, 4, 3 ], [ 0, 3, 4 ] ]
 
 -}
 faceIndices : Mesh vertex -> List (List Int)
@@ -276,11 +276,11 @@ faceIndices (Mesh verts mesh) =
         |> List.map canonicalCircular
 
 
-{-| Get the faces of a mesh as lists of vertices. The ordering is the same as
-in `faceIndices`.
+{-| Get the faces of a mesh as lists of vertices. The ordering of vertices
+for each face is the same as in `faceIndices`.
 
-    Mesh.faceVertices pyramid |> List.sort
-    --> [ [ a, b, c, d ], [ a, d, e ], [ a, e, b ], [ b, e, c ], [ c, e, d ] ]
+    Mesh.faceVertices pyramid
+    --> [ [ a, b, c, d ], [ a, e, b ], [ b, e, c ], [ c, e, d ], [ a, d, e ] ]
 
 -}
 faceVertices : Mesh vertex -> List (List vertex)
@@ -293,9 +293,10 @@ faceVertices mesh =
 
 
 {-| Get all of the edges of a mesh as pairs of vertex indices. Each edge will
-only be returned once, with the lower-index vertex listed first.
+only be returned once, with the lower-index vertex listed first, and will be
+returned in sorted order.
 
-    Mesh.edgeIndices pyramid |> List.sort
+    Mesh.edgeIndices pyramid
     --> [ ( 0, 1 )
     --> , ( 0, 3 )
     --> , ( 0, 4 )
@@ -313,9 +314,10 @@ edgeIndices (Mesh _ mesh) =
 
 
 {-| Get all of the edges of a mesh as pairs of vertices. Each edge will
-only be returned once, with the lower-index vertex listed first.
+only be returned once, with the lower-index vertex listed first, and will be
+returned in sorted order (by index).
 
-    Mesh.edgeVertices pyramid |> List.sort
+    Mesh.edgeVertices pyramid
     --> [ ( a, b )
     --> , ( a, d )
     --> , ( a, e )
@@ -385,11 +387,70 @@ fromTriangularMesh trimesh =
         |> fromOrientedFaces (TriangularMesh.vertices trimesh)
 
 
+{-| Transform a mesh by applying the given function to each of its vertices. For
+example, if you had a 2D mesh where each vertex was an `( x, y )` tuple and you
+wanted to convert it to a 3D mesh on the XY plane, you might use
+
+    mesh2d : Mesh ( Float, Float )
+    mesh2d =
+        ...
+
+    to3d : ( Float, Float ) -> ( Float, Float, Float )
+    to3d ( x, y ) =
+        ( x, y, 0 )
+
+    mesh3d : Mesh ( Float, Float, Float )
+    mesh3d =
+        Mesh.mapVertices to3d mesh2d
+
+-}
 mapVertices : (a -> b) -> Mesh a -> Mesh b
 mapVertices fn (Mesh verts mesh) =
     Mesh (Array.map fn verts) mesh
 
 
+{-| Combine a list of meshes into a single mesh. This concatenates the vertex
+arrays of each mesh and adjusts face indices to refer to the combined vertex
+array.
+
+    pyramid =
+        Mesh.fromOrientedFaces
+            (Array.fromList [ a, b, c, d, e ])
+            [ [ 0, 1, 2, 3 ]
+            , [ 0, 4, 1 ]
+            , [ 1, 4, 2 ]
+            , [ 2, 4, 3 ]
+            , [ 3, 4, 0 ]
+            ]
+
+    tetrahedron =
+        Mesh.fromOrientedFaces
+            (Array.fromList [ A, B, C, D ])
+            [ [ 0, 1, 2 ]
+            , [ 0, 3, 1 ]
+            , [ 1, 3, 2 ]
+            , [ 2, 3, 0 ]
+            ]
+
+    combined =
+        Mesh.combine [ pyramid, tetrahedron ]
+
+    Mesh.vertices combined
+    --> Array.fromList [ a, b, c, d, e, A, B, C, D ]
+
+    Mesh.faceIndices combined
+    --> [ [ 0, 1, 2, 3 ]
+    --> , [ 0, 4, 1 ]
+    --> , [ 1, 4, 2 ]
+    --> , [ 2, 4, 3 ]
+    --> , [ 0, 3, 4 ]
+    --> , [ 5, 6, 7 ]
+    --> , [ 5, 8, 6 ]
+    --> , [ 6, 8, 7 ]
+    --> , [ 5, 7, 8 ]
+    --> ]
+
+-}
 combine : List (Mesh a) -> Mesh a
 combine meshes =
     let
