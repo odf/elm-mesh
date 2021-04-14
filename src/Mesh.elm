@@ -360,6 +360,17 @@ vertexNeighbors start (Mesh _ mesh) =
     step [] start
 
 
+{-| Get the neighbors of all vertices as lists of vertex indices. The i-th
+entry in the array that is returned corresponds to the i-th vertex of the
+mesh. The neighbors are in the order one would encounter them when walking
+around the vertex in the same direction (clockwise or counterclockwise) that
+the vertices for each face where listed, starting with the neighbor that has
+the lowest vertex index.
+
+    Mesh.neighborIndices pyramid
+    --> [ [ 1, 3, 4 ], [ 0, 4, 2 ], [ 1, 4, 3 ], [ 0, 2, 4 ], [ 0, 3, 2, 1 ] ]
+
+-}
 neighborIndices : Mesh vertex -> Array (List Int)
 neighborIndices (Mesh verts mesh) =
     Array.toList mesh.atVertex
@@ -368,11 +379,17 @@ neighborIndices (Mesh verts mesh) =
         |> Array.fromList
 
 
+{-| Get the neighbors of all vertices as lists of vertices. Further details
+are as in `neighborIndices`.
+-}
 neighborVertices : Mesh vertex -> Array (List vertex)
 neighborVertices mesh =
     neighborIndices mesh |> Array.map (List.filterMap (\i -> vertex i mesh))
 
 
+{-| Triangulate each face of the mesh and return the result as a
+`TriangularMesh` instance.
+-}
 toTriangularMesh : Mesh vertex -> TriangularMesh vertex
 toTriangularMesh mesh =
     TriangularMesh.indexed
@@ -380,6 +397,9 @@ toTriangularMesh mesh =
         (faceIndices mesh |> List.concatMap triangulate)
 
 
+{-| Try to convert a `TriangularMesh` instance into a `Mesh`. This could
+potentially fail because a `Mesh` is more restrictive.
+-}
 fromTriangularMesh : TriangularMesh vertex -> Result String (Mesh vertex)
 fromTriangularMesh trimesh =
     TriangularMesh.faceIndices trimesh
@@ -475,6 +495,11 @@ combine meshes =
     fromOrientedFacesUnchecked vertices_ (makeFaces 0 meshes)
 
 
+{-| Calculate normals for a mesh. The first argument is a function that takes
+a vertex of the input mesh and returns its position. The second argument is a
+function that takes a vertex of the input mesh and its computed normal, and
+returns the corresponding vertex for the output mesh.
+-}
 withNormals : (a -> Vec3) -> (a -> Vec3 -> b) -> Mesh a -> Mesh b
 withNormals toPositionIn toVertexOut (Mesh verts mesh) =
     let
@@ -504,6 +529,16 @@ withNormals toPositionIn toVertexOut (Mesh verts mesh) =
     Mesh verticesOut mesh
 
 
+{-| Subdivide a mesh by first adding a new vertex in the center of each edge,
+subdividing each edge into two in the process, then adding a new vertex in the
+center of each face and splitting the face into quadrangles by connecting the
+new face center to the new edge centers.
+
+The first argument is a function that takes a list of input vertices, namely
+the vertices of an edge or face to be subdivided, and return the new "center"
+vertex.
+
+-}
 subdivide : (List vertex -> vertex) -> Mesh vertex -> Mesh vertex
 subdivide composeFn (Mesh verts mesh) =
     let
@@ -561,6 +596,17 @@ centroid points =
         |> Vec3.scale (1 / toFloat (List.length points))
 
 
+{-| Subdivide a mesh into quadrangles using the
+[Catmull-Clark](https://en.wikipedia.org/wiki/Catmull%E2%80%93Clark_subdivision_surface)
+method. The connectivity of the result will be the same as in `subdivide`, but
+the vertices will be positioned as to make it appear smoother.
+
+The first argument is a function that returns `True` if the input vertex should
+not be moved. The second argument is a function that returns the positions of
+an input vertex. The third argument is a function that takes a list of input
+vertices and a computed output position and returns an output vertex.
+
+-}
 subdivideSmoothly :
     (vertex -> Bool)
     -> (vertex -> Vec3)
