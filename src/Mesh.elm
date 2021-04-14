@@ -58,6 +58,44 @@ import Set
 import TriangularMesh exposing (TriangularMesh)
 
 
+{-| A `Mesh` is an instance of a
+[polygon mesh](https://en.wikipedia.org/wiki/Polygon_mesh)
+which is implemented as a so-called
+[half-edge data structure](https://www.flipcode.com/archives/The_Half-Edge_Data_Structure.shtml).
+Each mesh consists of an array of vertices and some connectivity information
+that describes how faces, edges and vertices are related to each other. A face
+must have at least three vertices, but can also have four, five or more.
+
+The half-edge data structure guarantees that the mesh describes a surface with
+a consistent "orientation", which intuitively means that if one were to walk
+along on the surface of the mesh one could never find oneself back at the
+starting point but standing upside-down on the other side of the mesh.
+
+Right now it is also not allowed to defined a mesh with a boundary.
+
+The vertices themselves can be any type you want. For a 2D mesh, you might have
+each vertex be simply a point:
+
+    type alias Mesh2d =
+        Mesh Point2d
+
+For a 3D mesh, each vertex might be a (point, normal) tuple:
+
+    type alias Mesh3d =
+        Mesh ( Point3d, Vector3d )
+
+In more complex cases, each vertex might be a record:
+
+    type alias VertexData =
+        { position : Point3d
+        , normal : Vector3d
+        , color : Color
+        }
+
+    type alias RenderMesh =
+        Mesh VertexData
+
+-}
 type Mesh vertex
     = Mesh
         (Array vertex)
@@ -77,6 +115,8 @@ opposite ( from, to ) =
     ( to, from )
 
 
+{-| A mesh with no vertices or faces.
+-}
 empty : Mesh vertex
 empty =
     Mesh Array.empty
@@ -127,6 +167,26 @@ fromOrientedFacesUnchecked vertexData faceLists =
         }
 
 
+{-| Create a mesh from an array of vertices and list of face indices. For
+example, to construct a square pyramid where `a` is the front right corner,
+`b` is the front left corner, `c` is the back left corner, `d` is the back
+right corner and `e` is the apex:
+
+    vertices =
+        Array.fromList [ a, b, c, d, e ]
+
+    faceIndices =
+        [ [ 0, 1, 2, 3 ], [ 0, 4, 1 ], [ 1, 4, 2 ], [ 2, 4, 3 ], [ 3, 4, 0 ] ]
+
+    pyramid =
+        Mesh.fromOrientedFaces vertices faceIndices
+            |> Result.withDefault Mesh.empty
+
+The return type here is a `Result String (Mesh vertex)` rather than just
+a `Mesh vertex` so that a specific error message can be produced if there is
+a problem with the input.
+
+-}
 fromOrientedFaces :
     Array vertex
     -> List (List Int)
@@ -142,6 +202,8 @@ fromOrientedFaces vertexData faceLists =
         seen e =
             Set.member e orientedEdgeSet
     in
+    -- TODO check that all vertex indices used are in the array range
+    -- TODO check that each vertex belongs to at least one face
     if Set.size orientedEdgeSet < List.length orientedEdges then
         Err "each oriented edge must be unique"
 
@@ -152,11 +214,27 @@ fromOrientedFaces vertexData faceLists =
         Ok (fromOrientedFacesUnchecked vertexData faceLists)
 
 
+{-| Get the vertices of a mesh.
+
+    Mesh.vertices pyramid
+    --> Array.fromList [ a, b, c, d, e ]
+
+-}
 vertices : Mesh vertex -> Array vertex
 vertices (Mesh verts _) =
     verts
 
 
+{-| Get a particular vertex of a mesh by index. If the index is out of range,
+returns `Nothing`.
+
+    TriangularMesh.vertex 1 pyramid
+    --> Just b
+
+    TriangularMesh.vertex 5 pyramid
+    --> Nothing
+
+-}
 vertex : Int -> Mesh vertex -> Maybe vertex
 vertex index mesh =
     Array.get index (vertices mesh)
@@ -184,6 +262,13 @@ verticesInFace start (Mesh _ mesh) =
     step [] start |> List.reverse
 
 
+{-| Get the faces of a mesh as lists of vertex indices. Each face is
+normalized so that its smallest vertex index comes first.
+
+    Mesh.faceIndices pyramid |> List.sort
+    --> [ [ 0, 1, 2, 3 ], [ 0, 3, 4 ], [ 0, 4, 1 ], [ 1, 4, 2 ], [ 2, 4, 3 ] ]
+
+-}
 faceIndices : Mesh vertex -> List (List Int)
 faceIndices (Mesh verts mesh) =
     Array.toList mesh.alongFace
@@ -191,6 +276,13 @@ faceIndices (Mesh verts mesh) =
         |> List.map canonicalCircular
 
 
+{-| Get the faces of a mesh as lists of vertices. The ordering is the same as
+in `faceIndices`.
+
+    Mesh.faceVertices pyramid |> List.sort
+    --> [ [ a, b, c, d ], [ a, d, e ], [ a, e, b ], [ b, e, c ], [ c, e, d ] ]
+
+-}
 faceVertices : Mesh vertex -> List (List vertex)
 faceVertices mesh =
     let
@@ -200,11 +292,41 @@ faceVertices mesh =
     List.map toFace (faceIndices mesh)
 
 
+{-| Get all of the edges of a mesh as pairs of vertex indices. Each edge will
+only be returned once, with the lower-index vertex listed first.
+
+    Mesh.edgeIndices pyramid |> List.sort
+    --> [ ( 0, 1 )
+    --> , ( 0, 3 )
+    --> , ( 0, 4 )
+    --> , ( 1, 2 )
+    --> , ( 1, 4 )
+    --> , ( 2, 3 )
+    --> , ( 2, 4 )
+    --> , ( 3, 4 )
+    --> ]
+
+-}
 edgeIndices : Mesh vertex -> List ( Int, Int )
 edgeIndices (Mesh _ mesh) =
     Dict.keys mesh.next |> List.filter (\( from, to ) -> from <= to)
 
 
+{-| Get all of the edges of a mesh as pairs of vertices. Each edge will
+only be returned once, with the lower-index vertex listed first.
+
+    Mesh.edgeVertices pyramid |> List.sort
+    --> [ ( a, b )
+    --> , ( a, d )
+    --> , ( a, e )
+    --> , ( b, c )
+    --> , ( b, e )
+    --> , ( c, d )
+    --> , ( c, e )
+    --> , ( d, e )
+    --> ]
+
+-}
 edgeVertices : Mesh vertex -> List ( vertex, vertex )
 edgeVertices mesh =
     let
