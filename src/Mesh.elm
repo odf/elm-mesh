@@ -507,13 +507,9 @@ withNormals toPositionIn toVertexOut (Mesh verts mesh) =
             neighborVertices (Mesh verts mesh)
 
         mapVertex idx v =
-            let
-                p =
-                    toPositionIn v
-            in
             Array.get idx neighbors
                 |> Maybe.withDefault []
-                |> List.map (toPositionIn >> Vec3.sub p)
+                |> List.map toPositionIn
                 |> cyclicPairs
                 |> List.map (\( a, b ) -> Vec3.cross a b)
                 |> List.foldl Vec3.add (vec3 0 0 0)
