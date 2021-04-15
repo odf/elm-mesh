@@ -14,10 +14,16 @@ module MeshTests exposing
 
 import Array exposing (Array)
 import Expect
-import Math.Vector3 as Vec3 exposing (Vec3, vec3)
+import Length
 import Mesh
+import Point3d exposing (Point3d)
 import Test exposing (Test)
 import TriangularMesh
+import Vector3d
+
+
+type WorldCoordinates
+    = WorldCoordinates
 
 
 octahedronVertices : Array String
@@ -38,17 +44,17 @@ octahedronFaces =
     ]
 
 
-octahedron : Mesh.Mesh Vec3
+octahedron : Mesh.Mesh (Point3d Length.Meters WorldCoordinates)
 octahedron =
     let
         vertices =
             Array.fromList
-                [ vec3 1 0 0
-                , vec3 0 1 0
-                , vec3 0 0 1
-                , vec3 -1 0 0
-                , vec3 0 -1 0
-                , vec3 0 0 -1
+                [ Point3d.fromTuple Length.meters ( 1, 0, 0 )
+                , Point3d.fromTuple Length.meters ( 0, 1, 0 )
+                , Point3d.fromTuple Length.meters ( 0, 0, 1 )
+                , Point3d.fromTuple Length.meters ( -1, 0, 0 )
+                , Point3d.fromTuple Length.meters ( 0, -1, 0 )
+                , Point3d.fromTuple Length.meters ( 0, 0, -1 )
                 ]
 
         faceIndices =
@@ -325,6 +331,10 @@ withNormals =
                 |> Expect.all
                     [ Mesh.vertices
                         >> Array.map Tuple.second
+                        >> Array.map Vector3d.toUnitless
+                        >> Array.map Vector3d.fromMeters
+                        >> Array.map
+                            (\v -> Point3d.translateBy v Point3d.origin)
                         >> Expect.equal (Mesh.vertices octahedron)
                     , Mesh.faceIndices
                         >> Expect.equal (Mesh.faceIndices octahedron)
@@ -332,10 +342,9 @@ withNormals =
         )
 
 
-centroid : List Vec3 -> Vec3
-centroid points =
-    List.foldl Vec3.add (vec3 0 0 0) points
-        |> Vec3.scale (1 / toFloat (List.length points))
+centroid : List (Point3d units coordinates) -> Point3d units coordinates
+centroid =
+    Point3d.centroidN >> Maybe.withDefault Point3d.origin
 
 
 subdivide : Test
@@ -343,7 +352,7 @@ subdivide =
     Test.test "subdivide"
         (\() ->
             octahedron
-                |> Mesh.mapVertices (Vec3.scale 6)
+                |> Mesh.mapVertices (Point3d.scaleAbout Point3d.origin 6)
                 |> Mesh.subdivide centroid
                 |> Expect.all
                     [ Mesh.vertices
@@ -370,8 +379,7 @@ subdivide =
                         >> Expect.equal (List.repeat 18 4 ++ List.repeat 8 3)
                     , Mesh.vertices
                         >> Array.toList
-                        >> List.map
-                            (\p -> ( Vec3.getX p, Vec3.getY p, Vec3.getZ p ))
+                        >> List.map (Point3d.toTuple Length.inMeters)
                         >> List.sort
                         >> Expect.equalLists
                             [ ( -6, 0, 0 )
@@ -417,7 +425,7 @@ subdivideSmoothly =
                     Mesh.subdivide centroid baseMesh
             in
             baseMesh
-                |> Mesh.mapVertices (Vec3.scale 12)
+                |> Mesh.mapVertices (Point3d.scaleAbout Point3d.origin 12)
                 |> Mesh.subdivideSmoothly
                     (always False)
                     identity
@@ -428,8 +436,7 @@ subdivideSmoothly =
                             (Mesh.faceIndices simpleSubdivision)
                     , Mesh.vertices
                         >> Array.toList
-                        >> List.map
-                            (\p -> ( Vec3.getX p, Vec3.getY p, Vec3.getZ p ))
+                        >> List.map (Point3d.toTuple Length.inMeters)
                         >> List.sort
                         >> Expect.equalLists
                             [ ( -7, 0, 0 )

@@ -53,9 +53,11 @@ You can:
 
 import Array exposing (Array)
 import Dict exposing (Dict)
-import Math.Vector3 as Vec3 exposing (Vec3, vec3)
+import Point3d exposing (Point3d)
+import Quantity exposing (Unitless)
 import Set
 import TriangularMesh exposing (TriangularMesh)
+import Vector3d exposing (Vector3d)
 
 
 {-| A `Mesh` is an instance of a
@@ -500,20 +502,28 @@ a vertex of the input mesh and returns its position. The second argument is a
 function that takes a vertex of the input mesh and its computed normal, and
 returns the corresponding vertex for the output mesh.
 -}
-withNormals : (a -> Vec3) -> (a -> Vec3 -> b) -> Mesh a -> Mesh b
+withNormals :
+    (a -> Point3d units coordinates)
+    -> (a -> Vector3d Unitless coordinates -> b)
+    -> Mesh a
+    -> Mesh b
 withNormals toPositionIn toVertexOut (Mesh verts mesh) =
     let
         neighbors =
             neighborVertices (Mesh verts mesh)
 
+        vertexVector =
+            toPositionIn >> Vector3d.from Point3d.origin
+
         mapVertex idx v =
             Array.get idx neighbors
                 |> Maybe.withDefault []
-                |> List.map toPositionIn
+                |> List.map vertexVector
                 |> cyclicPairs
-                |> List.map (\( a, b ) -> Vec3.cross a b)
-                |> List.foldl Vec3.add (vec3 0 0 0)
-                |> Vec3.normalize
+                -- cross product assumes left handed coordinate system
+                |> List.map (\( a, b ) -> Vector3d.cross b a)
+                |> Vector3d.sum
+                |> Vector3d.normalize
                 |> toVertexOut v
 
         verticesOut =
@@ -586,12 +596,6 @@ getAll indices array =
     List.filterMap (\i -> Array.get i array) indices
 
 
-centroid : List Vec3 -> Vec3
-centroid points =
-    List.foldl Vec3.add (vec3 0 0 0) points
-        |> Vec3.scale (1 / toFloat (List.length points))
-
-
 {-| Subdivide a mesh into quadrangles using the
 [Catmull-Clark](https://en.wikipedia.org/wiki/Catmull%E2%80%93Clark_subdivision_surface)
 method. The connectivity of the result will be the same as in `subdivide`, but
@@ -605,12 +609,15 @@ vertices and a computed output position and returns an output vertex.
 -}
 subdivideSmoothly :
     (vertex -> Bool)
-    -> (vertex -> Vec3)
-    -> (List vertex -> Vec3 -> vertex)
+    -> (vertex -> Point3d units coordinates)
+    -> (List vertex -> Point3d units coordinates -> vertex)
     -> Mesh vertex
     -> Mesh vertex
 subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
     let
+        centroid =
+            Point3d.centroidN >> Maybe.withDefault Point3d.origin
+
         verticesIn =
             vertices meshIn
 
@@ -665,7 +672,9 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
         makeVertexPoint i =
             let
                 posIn =
-                    vertex i meshSub |> Maybe.withDefault (vec3 0 0 0)
+                    vertex i meshSub
+                        |> Maybe.withDefault Point3d.origin
+                        |> Vector3d.from Point3d.origin
 
                 neighbors =
                     Array.get i neighborsSub |> Maybe.withDefault []
@@ -677,25 +686,29 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
                     neighbors
                         |> List.filterMap (\k -> vertex k meshSub)
                         |> centroid
+                        |> Vector3d.from Point3d.origin
 
                 centroidOfEdgePoints =
                     neighbors
                         |> List.map (\k -> k - nrVertices)
                         |> List.filterMap (\k -> Array.get k edgePointPos)
                         |> centroid
+                        |> Vector3d.from Point3d.origin
             in
             if
                 Array.get i verticesIn
                     |> Maybe.map isFixed
                     |> Maybe.withDefault False
             then
-                makeOutputVertex [ i ] posIn
+                Point3d.translateBy posIn Point3d.origin
+                    |> makeOutputVertex [ i ]
 
             else
-                Vec3.scale (toFloat nrNeighbors - 3) posIn
-                    |> Vec3.add centroidOfEdgeCenters
-                    |> Vec3.add (Vec3.scale 2 centroidOfEdgePoints)
-                    |> Vec3.scale (1 / toFloat nrNeighbors)
+                Vector3d.scaleBy (toFloat nrNeighbors - 3) posIn
+                    |> Vector3d.plus centroidOfEdgeCenters
+                    |> Vector3d.plus (Vector3d.scaleBy 2 centroidOfEdgePoints)
+                    |> Vector3d.scaleBy (1 / toFloat nrNeighbors)
+                    |> (\x -> Point3d.translateBy x Point3d.origin)
                     |> makeOutputVertex [ i ]
 
         vertexPoints =
