@@ -2,7 +2,7 @@
 
 This [Elm](http://elm-lang.org) package allows you to create and manipulate
 indexed meshes with arbitrary face sizes. It was inspired by
-[elm-triangular-mesh](http://package.elm-lang.org/packages/ianmackenzie/elm-triangular-mesh/1.0.0/TriangularMesh)
+[elm-triangular-mesh](http://package.elm-lang.org/packages/ianmackenzie/elm-triangular-mesh/1.1.0/TriangularMesh)
 and generally works in a very similar way. A mesh contains an array of vertices
 that can be of any type; the faces of a mesh are defined by lists of integer
 indices specifying which vertices makes up the face.
