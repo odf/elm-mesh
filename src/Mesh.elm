@@ -1,12 +1,12 @@
 module Mesh exposing
     ( Mesh
     , empty
-    , fromTriangularMesh, fromOrientedFaces
+    , fromOrientedFaces
+    , fromTriangularMesh, toTriangularMesh
     , combine
     , vertices, vertex, faceIndices, faceVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
     , mapVertices, withNormals, subdivide, subdivideSmoothly
-    , toTriangularMesh
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -26,7 +26,12 @@ You can:
 
 # Constructors
 
-@docs fromTriangularMesh, fromOrientedFaces
+@docs fromOrientedFaces
+
+
+# Interop
+
+@docs fromTriangularMesh, toTriangularMesh
 
 
 # Combining meshes
@@ -43,11 +48,6 @@ You can:
 # Transformations
 
 @docs mapVertices, withNormals, subdivide, subdivideSmoothly
-
-
-# Exporting
-
-@docs toTriangularMesh
 
 -}
 
@@ -73,7 +73,7 @@ a consistent "orientation", which intuitively means that if one were to walk
 along on the surface of the mesh one could never find oneself back at the
 starting point but standing upside-down on the other side of the mesh.
 
-Right now it is also not allowed to defined a mesh with a boundary.
+Right now it is also not allowed to define a mesh with a boundary.
 
 The vertices themselves can be any type you want. For a 2D mesh, you might have
 each vertex be simply a point:
@@ -169,7 +169,7 @@ fromOrientedFacesUnchecked vertexData faceLists =
         }
 
 
-{-| Create a mesh from an array of vertices and list of face indices. For
+{-| Create a mesh from an array of vertices and a list of face indices. For
 example, to construct a square pyramid where `a` is the front right corner,
 `b` is the front left corner, `c` is the back left corner, `d` is the back
 right corner and `e` is the apex:
@@ -178,7 +178,12 @@ right corner and `e` is the apex:
         Array.fromList [ a, b, c, d, e ]
 
     faceIndices =
-        [ [ 0, 1, 2, 3 ], [ 0, 4, 1 ], [ 1, 4, 2 ], [ 2, 4, 3 ], [ 3, 4, 0 ] ]
+        [ [ 0, 1, 2, 3 ]
+        , [ 0, 4, 1 ]
+        , [ 1, 4, 2 ]
+        , [ 2, 4, 3 ]
+        , [ 3, 4, 0 ]
+        ]
 
     pyramid =
         Mesh.fromOrientedFaces vertices faceIndices
@@ -230,10 +235,10 @@ vertices (Mesh verts _) =
 {-| Get a particular vertex of a mesh by index. If the index is out of range,
 returns `Nothing`.
 
-    TriangularMesh.vertex 1 pyramid
+    Mesh.vertex 1 pyramid
     --> Just b
 
-    TriangularMesh.vertex 5 pyramid
+    Mesh.vertex 5 pyramid
     --> Nothing
 
 -}
@@ -268,7 +273,12 @@ verticesInFace start (Mesh _ mesh) =
 normalized so that its smallest vertex index comes first.
 
     Mesh.faceIndices pyramid
-    --> [ [ 0, 1, 2, 3 ], [ 0, 4, 1 ], [ 1, 4, 2 ], [ 2, 4, 3 ], [ 0, 3, 4 ] ]
+    --> [ [ 0, 1, 2, 3 ]
+    --> , [ 0, 4, 1 ]
+    --> , [ 1, 4, 2 ]
+    --> , [ 2, 4, 3 ]
+    --> , [ 0, 3, 4 ]
+    --> ]
 
 -}
 faceIndices : Mesh vertex -> List (List Int)
@@ -282,7 +292,12 @@ faceIndices (Mesh verts mesh) =
 for each face is the same as in `faceIndices`.
 
     Mesh.faceVertices pyramid
-    --> [ [ a, b, c, d ], [ a, e, b ], [ b, e, c ], [ c, e, d ], [ a, d, e ] ]
+    --> [ [ a, b, c, d ]
+    --> , [ a, e, b ]
+    --> , [ b, e, c ]
+    --> , [ c, e, d ]
+    --> , [ a, d, e ]
+    --> ]
 
 -}
 faceVertices : Mesh vertex -> List (List vertex)
@@ -363,14 +378,19 @@ vertexNeighbors start (Mesh _ mesh) =
 
 
 {-| Get the neighbors of all vertices as lists of vertex indices. The i-th
-entry in the array that is returned corresponds to the i-th vertex of the
-mesh. The neighbors are in the order one would encounter them when walking
-around the vertex in the same direction (clockwise or counterclockwise) that
-the vertices for each face where listed, starting with the neighbor that has
+entry in the output array corresponds to the i-th vertex of the
+mesh. The neighbors are ordered as one would encounter them while walking
+around the vertex in the same direction (clockwise or counterclockwise) as
+the vertices for each face are listed, starting from the one with
 the lowest vertex index.
 
     Mesh.neighborIndices pyramid
-    --> [ [ 1, 3, 4 ], [ 0, 4, 2 ], [ 1, 4, 3 ], [ 0, 2, 4 ], [ 0, 3, 2, 1 ] ]
+    --> [ [ 1, 3, 4 ]
+    --> , [ 0, 4, 2 ]
+    --> , [ 1, 4, 3 ]
+    --> , [ 0, 2, 4 ]
+    --> , [ 0, 3, 2, 1 ]
+    --> ]
 
 -}
 neighborIndices : Mesh vertex -> Array (List Int)
@@ -498,9 +518,12 @@ combine meshes =
 
 
 {-| Calculate normals for a mesh. The first argument is a function that takes
-a vertex of the input mesh and returns its position. The second argument is a
-function that takes a vertex of the input mesh and its computed normal, and
-returns the corresponding vertex for the output mesh.
+a vertex of the input mesh and returns its position as a
+[Point3d](http://package.elm-lang.org/packages/ianmackenzie/elm-geometry/3.9.0/Point3d).
+The second argument is a function that takes a vertex of the input mesh and
+its computed normal as a
+[Vector3d](http://package.elm-lang.org/packages/ianmackenzie/elm-geometry/3.9.0/Vector3d),
+and returns the corresponding vertex for the output mesh.
 -}
 withNormals :
     (a -> Point3d units coordinates)
@@ -541,7 +564,7 @@ center of each face and splitting the face into quadrangles by connecting the
 new face center to the new edge centers.
 
 The first argument is a function that takes a list of input vertices, namely
-the vertices of an edge or face to be subdivided, and return the new "center"
+the vertices of an edge or face to be subdivided, and returns the new "center"
 vertex.
 
 -}
@@ -599,10 +622,10 @@ getAll indices array =
 {-| Subdivide a mesh into quadrangles using the
 [Catmull-Clark](https://en.wikipedia.org/wiki/Catmull%E2%80%93Clark_subdivision_surface)
 method. The connectivity of the result will be the same as in `subdivide`, but
-the vertices will be positioned as to make it appear smoother.
+the vertices will be repositioned to make it appear smoother.
 
 The first argument is a function that returns `True` if the input vertex should
-not be moved. The second argument is a function that returns the positions of
+not be moved. The second argument is a function that returns the position of
 an input vertex. The third argument is a function that takes a list of input
 vertices and a computed output position and returns an output vertex.
 
