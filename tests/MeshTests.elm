@@ -8,7 +8,9 @@ module MeshTests exposing
     , subdivide
     , subdivideSmoothly
     , toTriangular
+    , undefinedVertex
     , unpairedOrientedEdge
+    , unreferencedVertex
     , withNormals
     )
 
@@ -170,6 +172,28 @@ goodFaceList =
                             , [ "front", "left", "back", "right" ]
                             ]
                     ]
+        )
+
+
+undefinedVertex : Test
+undefinedVertex =
+    Test.test "undefinedVertex"
+        (\() ->
+            Mesh.fromOrientedFaces
+                (Array.slice 1 6 octahedronVertices)
+                octahedronFaces
+                |> Expect.err
+        )
+
+
+unreferencedVertex : Test
+unreferencedVertex =
+    Test.test "unreferencedVertex"
+        (\() ->
+            Mesh.fromOrientedFaces
+                (Array.push "off" octahedronVertices)
+                octahedronFaces
+                |> Expect.err
         )
 
 

@@ -206,16 +206,26 @@ fromOrientedFaces vertexData faceLists =
         orientedEdgeSet =
             Set.fromList orientedEdges
 
-        seen e =
+        definedVertexSet =
+            List.range 0 (Array.length vertexData - 1) |> Set.fromList
+
+        referencedVertexSet =
+            List.concat faceLists |> Set.fromList
+
+        edgeSeen e =
             Set.member e orientedEdgeSet
     in
-    -- TODO check that all vertex indices used are in the array range
-    -- TODO check that each vertex belongs to at least one face
-    if Set.size orientedEdgeSet < List.length orientedEdges then
-        Err "each oriented edge must be unique"
+    if Set.size (Set.diff referencedVertexSet definedVertexSet) > 0 then
+        Err "face lists contain undefined vertices"
 
-    else if List.any (opposite >> seen >> not) orientedEdges then
-        Err "each oriented edge must have a reverse"
+    else if Set.size (Set.diff definedVertexSet referencedVertexSet) > 0 then
+        Err "not all vertices are used"
+
+    else if Set.size orientedEdgeSet < List.length orientedEdges then
+        Err "the same oriented edge appears twice"
+
+    else if List.any (opposite >> edgeSeen >> not) orientedEdges then
+        Err "an oriented edge is missing a reverse"
 
     else
         Ok (fromOrientedFacesUnchecked vertexData faceLists)
