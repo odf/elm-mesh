@@ -9,8 +9,10 @@ module MeshTests exposing
     , subdivideSmoothly
     , toTriangular
     , undefinedVertex
-    , unpairedOrientedEdge
     , unreferencedVertex
+    , vertexDuplicateInBoundary
+    , vertexDuplicateInFace
+    , withBoundary
     , withNormals
     )
 
@@ -175,6 +177,73 @@ goodFaceList =
         )
 
 
+withBoundary : Test
+withBoundary =
+    Test.test "withBoundary"
+        (\() ->
+            octahedronFaces
+                |> List.drop 1
+                |> Mesh.fromOrientedFaces octahedronVertices
+                |> Result.withDefault Mesh.empty
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Expect.equal octahedronVertices
+                    , Mesh.edgeIndices
+                        >> Expect.equal
+                            [ ( 0, 1 )
+                            , ( 0, 2 )
+                            , ( 0, 4 )
+                            , ( 0, 5 )
+                            , ( 1, 2 )
+                            , ( 1, 3 )
+                            , ( 1, 5 )
+                            , ( 2, 3 )
+                            , ( 2, 4 )
+                            , ( 3, 4 )
+                            , ( 3, 5 )
+                            , ( 4, 5 )
+                            ]
+                    , Mesh.edgeVertices
+                        >> Expect.equal
+                            [ ( "front", "right" )
+                            , ( "front", "top" )
+                            , ( "front", "left" )
+                            , ( "front", "bottom" )
+                            , ( "right", "top" )
+                            , ( "right", "back" )
+                            , ( "right", "bottom" )
+                            , ( "top", "back" )
+                            , ( "top", "left" )
+                            , ( "back", "left" )
+                            , ( "back", "bottom" )
+                            , ( "left", "bottom" )
+                            ]
+                    , Mesh.faceIndices
+                        >> List.sort
+                        >> Expect.equal
+                            [ [ 0, 2, 4 ]
+                            , [ 0, 4, 5 ]
+                            , [ 0, 5, 1 ]
+                            , [ 1, 3, 2 ]
+                            , [ 1, 5, 3 ]
+                            , [ 2, 3, 4 ]
+                            , [ 3, 5, 4 ]
+                            ]
+                    , Mesh.faceVertices
+                        >> List.sort
+                        >> Expect.equal
+                            [ [ "back", "bottom", "left" ]
+                            , [ "front", "bottom", "right" ]
+                            , [ "front", "left", "bottom" ]
+                            , [ "front", "top", "left" ]
+                            , [ "right", "back", "top" ]
+                            , [ "right", "bottom", "back" ]
+                            , [ "top", "back", "left" ]
+                            ]
+                    ]
+        )
+
+
 undefinedVertex : Test
 undefinedVertex =
     Test.test "undefinedVertex"
@@ -197,12 +266,34 @@ unreferencedVertex =
         )
 
 
-unpairedOrientedEdge : Test
-unpairedOrientedEdge =
-    Test.test "unpairedOrientedEdge"
+vertexDuplicateInFace : Test
+vertexDuplicateInFace =
+    Test.test "vertexDuplicateInFace"
         (\() ->
-            octahedronFaces
-                |> List.drop 1
+            [ [ 0, 1, 2, 0, 4, 5 ]
+            , [ 1, 0, 5 ]
+            , [ 2, 1, 3 ]
+            , [ 0, 2, 4 ]
+            , [ 3, 5, 4 ]
+            , [ 5, 3, 1 ]
+            , [ 3, 4, 2 ]
+            ]
+                |> Mesh.fromOrientedFaces octahedronVertices
+                |> Expect.err
+        )
+
+
+vertexDuplicateInBoundary : Test
+vertexDuplicateInBoundary =
+    Test.test "vertexDuplicateInBoundary"
+        (\() ->
+            [ [ 1, 0, 5 ]
+            , [ 2, 1, 3 ]
+            , [ 0, 2, 4 ]
+            , [ 3, 5, 4 ]
+            , [ 5, 3, 1 ]
+            , [ 3, 4, 2 ]
+            ]
                 |> Mesh.fromOrientedFaces octahedronVertices
                 |> Expect.err
         )

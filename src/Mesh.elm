@@ -138,6 +138,14 @@ fromOrientedFacesUnchecked vertexData faceLists =
         orientedEdges =
             List.concat orientedEdgeLists
 
+        orientedEdgeSet =
+            Set.fromList orientedEdges
+
+        boundaryEdges =
+            List.filter
+                (opposite >> flip Set.member orientedEdgeSet >> not)
+                orientedEdges
+
         next =
             List.concatMap cyclicPairs orientedEdgeLists |> Dict.fromList
 
@@ -200,32 +208,37 @@ fromOrientedFaces :
     -> Result String (Mesh vertex)
 fromOrientedFaces vertexData faceLists =
     let
-        orientedEdges =
-            List.map cyclicPairs faceLists |> List.concat
-
-        orientedEdgeSet =
-            Set.fromList orientedEdges
-
         definedVertexSet =
             List.range 0 (Array.length vertexData - 1) |> Set.fromList
 
         referencedVertexSet =
             List.concat faceLists |> Set.fromList
 
-        edgeSeen e =
-            Set.member e orientedEdgeSet
+        orientedEdges =
+            List.map cyclicPairs faceLists |> List.concat
+
+        orientedEdgeSet =
+            Set.fromList orientedEdges
+
+        boundaryEdges =
+            List.filter
+                (opposite >> flip Set.member orientedEdgeSet >> not)
+                orientedEdges
     in
     if Set.size (Set.diff referencedVertexSet definedVertexSet) > 0 then
-        Err "face lists contain undefined vertices"
+        Err "an undefined vertex appears in a face"
 
     else if Set.size (Set.diff definedVertexSet referencedVertexSet) > 0 then
-        Err "not all vertices are used"
+        Err "one of the vertices does not appear in any face"
+
+    else if List.any hasDuplicates faceLists then
+        Err "a vertex appears more than once in the same face"
+
+    else if List.map Tuple.first boundaryEdges |> hasDuplicates then
+        Err "a vertex appears more then once in a boundary"
 
     else if Set.size orientedEdgeSet < List.length orientedEdges then
-        Err "the same oriented edge appears twice"
-
-    else if List.any (opposite >> edgeSeen >> not) orientedEdges then
-        Err "an oriented edge is missing a reverse"
+        Err "an oriented edge appears more than once"
 
     else
         Ok (fromOrientedFacesUnchecked vertexData faceLists)
@@ -337,7 +350,10 @@ returned in sorted order.
 -}
 edgeIndices : Mesh vertex -> List ( Int, Int )
 edgeIndices (Mesh _ mesh) =
-    Dict.keys mesh.next |> List.filter (\( from, to ) -> from <= to)
+    Dict.keys mesh.next
+        |> List.map (\( from, to ) -> ( min from to, max from to ))
+        |> Set.fromList
+        |> Set.toList
 
 
 {-| Get all of the edges of a mesh as pairs of vertices. Each edge will
@@ -754,7 +770,12 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
 
 
 
--- List helpers
+-- Various helper functions, mostly for lists
+
+
+flip : (c -> b -> a) -> b -> c -> a
+flip f x y =
+    f y x
 
 
 triangulate : List vertex -> List ( vertex, vertex, vertex )
@@ -783,3 +804,17 @@ canonicalCircular list =
         |> List.map (\k -> List.drop k list ++ List.take k list)
         |> List.minimum
         |> Maybe.withDefault list
+
+
+hasDuplicates : List comparable -> Bool
+hasDuplicates =
+    let
+        hasDupes xs =
+            case xs of
+                first :: second :: rest ->
+                    first == second || hasDupes (second :: rest)
+
+                _ ->
+                    False
+    in
+    List.sort >> hasDupes
