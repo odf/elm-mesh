@@ -231,6 +231,9 @@ fromOrientedFaces vertexData faceLists =
     else if Set.size (Set.diff definedVertexSet referencedVertexSet) > 0 then
         Err "one of the vertices does not appear in any face"
 
+    else if List.any (List.length >> flip (<) 2) faceLists then
+        Err "there is a face with fewer than two vertices"
+
     else if List.any hasDuplicates faceLists then
         Err "a vertex appears more than once in the same face"
 

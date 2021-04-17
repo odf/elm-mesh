@@ -1,10 +1,13 @@
 module MeshTests exposing
     ( combine
     , empty
+    , emptyFace
     , fromTriangular
     , goodFaceList
     , mapVertices
+    , oneGon
     , orientationMismatch
+    , singleTwoGon
     , subdivide
     , subdivideSmoothly
     , toTriangular
@@ -296,6 +299,37 @@ vertexDuplicateInBoundary =
             ]
                 |> Mesh.fromOrientedFaces octahedronVertices
                 |> Expect.err
+        )
+
+
+emptyFace : Test
+emptyFace =
+    Test.test "emptyFace"
+        (\() ->
+            octahedronFaces
+                |> (::) []
+                |> Mesh.fromOrientedFaces octahedronVertices
+                |> Expect.err
+        )
+
+
+oneGon : Test
+oneGon =
+    Test.test "oneGon"
+        (\() ->
+            octahedronFaces
+                |> (::) [ 0 ]
+                |> Mesh.fromOrientedFaces octahedronVertices
+                |> Expect.err
+        )
+
+
+singleTwoGon : Test
+singleTwoGon =
+    Test.test "singleTwoGon"
+        (\() ->
+            Mesh.fromOrientedFaces (Array.fromList [ "a", "b" ]) [ [ 0, 1 ] ]
+                |> Expect.ok
         )
 
 
