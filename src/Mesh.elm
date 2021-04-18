@@ -275,24 +275,8 @@ vertex index mesh =
 
 verticesInFace : OrientedEdge -> Mesh vertex -> List Int
 verticesInFace start (Mesh _ mesh) =
-    let
-        step vertsIn current =
-            let
-                vertsOut =
-                    Tuple.first current :: vertsIn
-            in
-            case Dict.get current mesh.next of
-                Just next ->
-                    if next == start then
-                        vertsOut
-
-                    else
-                        step vertsOut next
-
-                Nothing ->
-                    []
-    in
-    step [] start |> List.reverse
+    traceCycle start (flip Dict.get mesh.next)
+        |> List.map Tuple.first
 
 
 {-| Get the faces of a mesh as lists of vertex indices. Each face is
@@ -386,24 +370,9 @@ edgeVertices mesh =
 
 vertexNeighbors : OrientedEdge -> Mesh vertex -> List Int
 vertexNeighbors start (Mesh _ mesh) =
-    let
-        step vertsIn current =
-            let
-                vertsOut =
-                    Tuple.second current :: vertsIn
-            in
-            case Dict.get (opposite current) mesh.next of
-                Just next ->
-                    if next == start then
-                        vertsOut
-
-                    else
-                        step vertsOut next
-
-                Nothing ->
-                    []
-    in
-    step [] start
+    traceCycle start (opposite >> flip Dict.get mesh.next)
+        |> List.map Tuple.second
+        |> List.reverse
 
 
 {-| Get the neighbors of all vertices as lists of vertex indices. The i-th
@@ -779,6 +748,24 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
 flip : (c -> b -> a) -> b -> c -> a
 flip f x y =
     f y x
+
+
+traceCycle : comparable -> (comparable -> Maybe comparable) -> List comparable
+traceCycle start next =
+    let
+        step cycle current =
+            case next current of
+                Just to ->
+                    if to == start then
+                        current :: cycle
+
+                    else
+                        step (current :: cycle) to
+
+                Nothing ->
+                    []
+    in
+    step [] start |> List.reverse
 
 
 triangulate : List vertex -> List ( vertex, vertex, vertex )
