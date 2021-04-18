@@ -19,6 +19,7 @@ module MeshTests exposing
     , vertexDuplicateInFace
     , withBoundary
     , withNormals
+    , withNormalsWithBoundary
     )
 
 import Array exposing (Array)
@@ -58,12 +59,12 @@ octahedron =
     let
         vertices =
             Array.fromList
-                [ Point3d.fromTuple Length.meters ( 1, 0, 0 )
-                , Point3d.fromTuple Length.meters ( 0, 1, 0 )
-                , Point3d.fromTuple Length.meters ( 0, 0, 1 )
-                , Point3d.fromTuple Length.meters ( -1, 0, 0 )
-                , Point3d.fromTuple Length.meters ( 0, -1, 0 )
-                , Point3d.fromTuple Length.meters ( 0, 0, -1 )
+                [ Point3d.meters 1 0 0
+                , Point3d.meters 0 1 0
+                , Point3d.meters 0 0 1
+                , Point3d.meters -1 0 0
+                , Point3d.meters 0 -1 0
+                , Point3d.meters 0 0 -1
                 ]
 
         faceIndices =
@@ -591,6 +592,38 @@ withNormals =
                         >> Expect.equal (Mesh.vertices octahedron)
                     , Mesh.faceIndices
                         >> Expect.equal (Mesh.faceIndices octahedron)
+                    ]
+        )
+
+
+withNormalsWithBoundary : Test
+withNormalsWithBoundary =
+    Test.test "withNormalsWithBoundary"
+        (\() ->
+            let
+                verts =
+                    Array.fromList
+                        [ Point3d.meters 1 0 0
+                        , Point3d.meters 0 1 0
+                        , Point3d.meters -1 0 0
+                        , Point3d.meters 0 -1 0
+                        ]
+
+                z =
+                    Vector3d.unitless 0 0 1
+            in
+            Mesh.fromOrientedFaces
+                verts
+                [ [ 0, 1, 2, 3 ] ]
+                |> Result.withDefault Mesh.empty
+                |> Mesh.withNormals identity Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.map Tuple.second
+                        >> Array.toList
+                        >> Expect.equal [ z, z, z, z ]
+                    , Mesh.faceIndices
+                        >> Expect.equal [ [ 0, 1, 2, 3 ] ]
                     ]
         )
 

@@ -74,8 +74,6 @@ a consistent "orientation", which intuitively means that if one were to walk
 along on the surface of the mesh one could never find oneself back at the
 starting point but standing upside-down on the other side of the mesh.
 
-Right now it is also not allowed to define a mesh with a boundary.
-
 The vertices themselves can be any type you want. For a 2D mesh, you might have
 each vertex be simply a point:
 
@@ -612,18 +610,33 @@ withNormals :
 withNormals toPositionIn toVertexOut (Mesh verts mesh) =
     let
         neighbors =
-            neighborVertices (Mesh verts mesh)
+            neighborIndices (Mesh verts mesh)
 
-        vertexVector =
-            toPositionIn >> Vector3d.from Point3d.origin
+        positions =
+            Array.map toPositionIn verts
+
+        vector a b =
+            let
+                p =
+                    Array.get a positions |> Maybe.withDefault Point3d.origin
+
+                q =
+                    Array.get b positions |> Maybe.withDefault Point3d.origin
+            in
+            Vector3d.from p q
 
         mapVertex idx v =
             Array.get idx neighbors
                 |> Maybe.withDefault []
-                |> List.map vertexVector
                 |> cyclicPairs
-                -- cross product assumes left handed coordinate system
-                |> List.map (\( a, b ) -> Vector3d.cross b a)
+                |> List.filter
+                    (\( u, _ ) ->
+                        Dict.get ( idx, u ) mesh.toBoundaryComponent == Nothing
+                    )
+                |> List.map
+                    (\( a, b ) ->
+                        vector idx a |> Vector3d.cross (vector idx b)
+                    )
                 |> Vector3d.sum
                 |> Vector3d.normalize
                 |> toVertexOut v
