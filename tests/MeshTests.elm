@@ -3,6 +3,7 @@ module MeshTests exposing
     , empty
     , emptyFace
     , fromTriangular
+    , fromTriangularWithBoundary
     , goodFaceList
     , mapVertices
     , oneGon
@@ -11,6 +12,7 @@ module MeshTests exposing
     , subdivide
     , subdivideSmoothly
     , toTriangular
+    , toTriangularWithBoundary
     , undefinedVertex
     , unreferencedVertex
     , vertexDuplicateInBoundary
@@ -246,6 +248,26 @@ withBoundary =
                             , [ "right", "bottom", "back" ]
                             , [ "top", "back", "left" ]
                             ]
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ [ 1, 2, 4, 5 ]
+                            , [ 0, 5, 3, 2 ]
+                            , [ 0, 1, 3, 4 ]
+                            , [ 1, 5, 4, 2 ]
+                            , [ 0, 2, 3, 5 ]
+                            , [ 0, 4, 3, 1 ]
+                            ]
+                    , Mesh.neighborVertices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ [ "right", "top", "left", "bottom" ]
+                            , [ "front", "bottom", "back", "top" ]
+                            , [ "front", "right", "back", "left" ]
+                            , [ "right", "bottom", "left", "top" ]
+                            , [ "front", "top", "back", "bottom" ]
+                            , [ "front", "left", "back", "right" ]
+                            ]
                     ]
         )
 
@@ -379,6 +401,28 @@ toTriangular =
         )
 
 
+toTriangularWithBoundary : Test
+toTriangularWithBoundary =
+    Test.test "toTriangularWithBoundary"
+        (\() ->
+            [ [ 0, 1, 2, 3 ] ]
+                |> Mesh.fromOrientedFaces
+                    (Array.fromList [ 'a', 'b', 'c', 'd' ])
+                |> Result.withDefault Mesh.empty
+                |> Mesh.toTriangularMesh
+                |> Expect.all
+                    [ TriangularMesh.vertices
+                        >> Array.toList
+                        >> Expect.equal [ 'a', 'b', 'c', 'd' ]
+                    , TriangularMesh.faceIndices
+                        >> Expect.equal [ ( 0, 1, 2 ), ( 0, 2, 3 ) ]
+                    , TriangularMesh.faceVertices
+                        >> Expect.equal
+                            [ ( 'a', 'b', 'c' ), ( 'a', 'c', 'd' ) ]
+                    ]
+        )
+
+
 fromTriangular : Test
 fromTriangular =
     Test.test "fromTriangular"
@@ -423,6 +467,49 @@ fromTriangular =
                             , [ 'b', 'f', 'd' ]
                             , [ 'c', 'd', 'e' ]
                             , [ 'd', 'f', 'e' ]
+                            ]
+                    ]
+        )
+
+
+fromTriangularWithBoundary : Test
+fromTriangularWithBoundary =
+    Test.test "fromTriangularWithBoundary"
+        (\() ->
+            TriangularMesh.indexed
+                (Array.fromList [ 'a', 'b', 'c', 'd', 'e', 'f' ])
+                [ ( 1, 0, 5 )
+                , ( 2, 1, 3 )
+                , ( 0, 2, 4 )
+                , ( 5, 3, 1 )
+                , ( 4, 5, 0 )
+                , ( 3, 4, 2 )
+                ]
+                |> Mesh.fromTriangularMesh
+                |> Result.withDefault Mesh.empty
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal [ 'a', 'b', 'c', 'd', 'e', 'f' ]
+                    , Mesh.faceIndices
+                        >> List.sort
+                        >> Expect.equal
+                            [ [ 0, 2, 4 ]
+                            , [ 0, 4, 5 ]
+                            , [ 0, 5, 1 ]
+                            , [ 1, 3, 2 ]
+                            , [ 1, 5, 3 ]
+                            , [ 2, 3, 4 ]
+                            ]
+                    , Mesh.faceVertices
+                        >> List.sort
+                        >> Expect.equal
+                            [ [ 'a', 'c', 'e' ]
+                            , [ 'a', 'e', 'f' ]
+                            , [ 'a', 'f', 'b' ]
+                            , [ 'b', 'd', 'c' ]
+                            , [ 'b', 'f', 'd' ]
+                            , [ 'c', 'd', 'e' ]
                             ]
                     ]
         )

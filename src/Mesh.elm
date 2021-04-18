@@ -103,8 +103,10 @@ type Mesh vertex
         (Array vertex)
         { atVertex : Array OrientedEdge
         , alongFace : Array OrientedEdge
-        , next : Dict OrientedEdge OrientedEdge
+        , alongBoundaryComponent : Array OrientedEdge
         , toFace : Dict OrientedEdge Int
+        , toBoundaryComponent : Dict OrientedEdge Int
+        , next : Dict OrientedEdge OrientedEdge
         }
 
 
@@ -124,8 +126,10 @@ empty =
     Mesh Array.empty
         { atVertex = Array.empty
         , alongFace = Array.empty
-        , next = Dict.empty
+        , alongBoundaryComponent = Array.empty
         , toFace = Dict.empty
+        , toBoundaryComponent = Dict.empty
+        , next = Dict.empty
         }
 
 
@@ -155,11 +159,9 @@ fromOrientedFacesUnchecked vertexData faceLists =
         boundaryLists =
             extractCycles boundaryVertices (flip Dict.get nextOnBoundary)
                 |> List.map canonicalCircular
+                |> List.map cyclicPairs
 
-        next =
-            List.concatMap cyclicPairs orientedEdgeLists |> Dict.fromList
-
-        fromVertex =
+        atVertex =
             orientedEdges
                 |> List.map (\( from, to ) -> ( from, ( from, to ) ))
                 |> Dict.fromList
@@ -172,18 +174,40 @@ fromOrientedFacesUnchecked vertexData faceLists =
                 |> List.concat
                 |> Dict.fromList
 
-        fromFace =
+        alongFace =
             Dict.toList toFace
                 |> List.map (\( key, val ) -> ( val, key ))
                 |> Dict.fromList
                 |> Dict.values
                 |> Array.fromList
+
+        toBoundaryComponent =
+            boundaryLists
+                |> List.indexedMap (\i -> List.map (\e -> ( e, i )))
+                |> List.concat
+                |> Dict.fromList
+
+        alongBoundaryComponent =
+            Dict.toList toBoundaryComponent
+                |> List.map (\( key, val ) -> ( val, key ))
+                |> Dict.fromList
+                |> Dict.values
+                |> Array.fromList
+
+        next =
+            List.concat
+                [ List.concatMap cyclicPairs orientedEdgeLists
+                , List.concatMap cyclicPairs boundaryLists
+                ]
+                |> Dict.fromList
     in
     Mesh vertexData
-        { atVertex = fromVertex
-        , alongFace = fromFace
-        , next = next
+        { atVertex = atVertex
+        , alongFace = alongFace
+        , alongBoundaryComponent = alongBoundaryComponent
         , toFace = toFace
+        , toBoundaryComponent = toBoundaryComponent
+        , next = next
         }
 
 
@@ -622,11 +646,6 @@ subdivide composeFn (Mesh verts mesh) =
     fromOrientedFacesUnchecked vertsOut facesOut
 
 
-getAll : List Int -> Array a -> List a
-getAll indices array =
-    List.filterMap (\i -> Array.get i array) indices
-
-
 {-| Subdivide a mesh into quadrangles using the
 [Catmull-Clark](https://en.wikipedia.org/wiki/Catmull%E2%80%93Clark_subdivision_surface)
 method. The connectivity of the result will be the same as in `subdivide`, but
@@ -758,6 +777,11 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
 flip : (c -> b -> a) -> b -> c -> a
 flip f x y =
     f y x
+
+
+getAll : List Int -> Array a -> List a
+getAll indices array =
+    List.filterMap (\i -> Array.get i array) indices
 
 
 traceCycle : a -> (a -> Maybe a) -> List a
