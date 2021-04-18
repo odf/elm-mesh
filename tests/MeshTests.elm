@@ -158,6 +158,10 @@ goodFaceList =
                             , [ "right", "bottom", "back" ]
                             , [ "top", "back", "left" ]
                             ]
+                    , Mesh.boundaryIndices
+                        >> Expect.equal []
+                    , Mesh.boundaryVertices
+                        >> Expect.equal []
                     , Mesh.neighborIndices
                         >> Array.toList
                         >> Expect.equal
@@ -247,6 +251,16 @@ withBoundary =
                             , [ "right", "back", "top" ]
                             , [ "right", "bottom", "back" ]
                             , [ "top", "back", "left" ]
+                            ]
+                    , Mesh.boundaryIndices
+                        >> List.sort
+                        >> Expect.equal
+                            [ [ 0, 1, 2 ], [ 3, 5, 4 ] ]
+                    , Mesh.boundaryVertices
+                        >> List.sort
+                        >> Expect.equal
+                            [ [ "back", "bottom", "left" ]
+                            , [ "front", "right", "top" ]
                             ]
                     , Mesh.neighborIndices
                         >> Array.toList

@@ -7,6 +7,7 @@ module Mesh exposing
     , vertices, vertex, faceIndices, faceVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
     , mapVertices, withNormals, subdivide, subdivideSmoothly
+    , boundaryIndices, boundaryVertices
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -150,14 +151,14 @@ fromOrientedFacesUnchecked vertexData faceLists =
                 (opposite >> flip Set.member orientedEdgeSet >> not)
                 orientedEdges
 
-        boundaryVertices =
+        verticesAtBoundary =
             List.map Tuple.first boundaryEdges
 
         nextOnBoundary =
             Dict.fromList (List.map opposite boundaryEdges)
 
         boundaryLists =
-            extractCycles boundaryVertices (flip Dict.get nextOnBoundary)
+            extractCycles verticesAtBoundary (flip Dict.get nextOnBoundary)
                 |> List.map canonicalCircular
                 |> List.map cyclicPairs
 
@@ -351,6 +352,52 @@ faceVertices mesh =
             List.filterMap (\i -> vertex i mesh)
     in
     List.map toFace (faceIndices mesh)
+
+
+{-| Get the boundary components of a mesh as lists of vertex indices. Each
+component is normalized so that its smallest vertex index comes first.
+
+    pyramidTop =
+        Mesh.fromOrientedFaces
+            (Array.fromList [ a, b, c, d, e ])
+            [ [ 0, 4, 1 ]
+            , [ 1, 4, 2 ]
+            , [ 2, 4, 3 ]
+            , [ 3, 4, 0 ] ]
+            |> Result.withDefault Mesh.empty
+
+    Mesh.faceIndices pyramidTop
+    --> [ [ 0, 4, 1 ]
+    --> , [ 1, 4, 2 ]
+    --> , [ 2, 4, 3 ]
+    --> , [ 0, 3, 4 ]
+    --> ]
+
+    Mesh.boundaryIndices pyramidTop
+    --> [ [ 0, 1, 2, 3 ] ]
+
+-}
+boundaryIndices : Mesh vertex -> List (List Int)
+boundaryIndices (Mesh verts mesh) =
+    Array.toList mesh.alongBoundaryComponent
+        |> List.map (\start -> verticesInFace start (Mesh verts mesh))
+        |> List.map canonicalCircular
+
+
+{-| Get the boundary components of a mesh as lists of vertices. The ordering of
+vertices for each component is the same as in `faceIndices`.
+
+    Mesh.boundaryVertices pyramidTop
+    --> [ [ a, b, c, d ] ]
+
+-}
+boundaryVertices : Mesh vertex -> List (List vertex)
+boundaryVertices mesh =
+    let
+        toFace =
+            List.filterMap (\i -> vertex i mesh)
+    in
+    List.map toFace (boundaryIndices mesh)
 
 
 {-| Get all of the edges of a mesh as pairs of vertex indices. Each edge will
