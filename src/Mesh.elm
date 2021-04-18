@@ -750,7 +750,7 @@ flip f x y =
     f y x
 
 
-traceCycle : comparable -> (comparable -> Maybe comparable) -> List comparable
+traceCycle : a -> (a -> Maybe a) -> List a
 traceCycle start next =
     let
         step cycle current =
