@@ -184,8 +184,13 @@ withBoundary : Test
 withBoundary =
     Test.test "withBoundary"
         (\() ->
-            octahedronFaces
-                |> List.drop 1
+            [ [ 1, 0, 5 ]
+            , [ 2, 1, 3 ]
+            , [ 0, 2, 4 ]
+            , [ 5, 3, 1 ]
+            , [ 4, 5, 0 ]
+            , [ 3, 4, 2 ]
+            ]
                 |> Mesh.fromOrientedFaces octahedronVertices
                 |> Result.withDefault Mesh.empty
                 |> Expect.all
@@ -230,13 +235,11 @@ withBoundary =
                             , [ 1, 3, 2 ]
                             , [ 1, 5, 3 ]
                             , [ 2, 3, 4 ]
-                            , [ 3, 5, 4 ]
                             ]
                     , Mesh.faceVertices
                         >> List.sort
                         >> Expect.equal
-                            [ [ "back", "bottom", "left" ]
-                            , [ "front", "bottom", "right" ]
+                            [ [ "front", "bottom", "right" ]
                             , [ "front", "left", "bottom" ]
                             , [ "front", "top", "left" ]
                             , [ "right", "back", "top" ]

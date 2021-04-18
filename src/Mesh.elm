@@ -146,6 +146,16 @@ fromOrientedFacesUnchecked vertexData faceLists =
                 (opposite >> flip Set.member orientedEdgeSet >> not)
                 orientedEdges
 
+        boundaryVertices =
+            List.map Tuple.first boundaryEdges
+
+        nextOnBoundary =
+            Dict.fromList (List.map opposite boundaryEdges)
+
+        boundaryLists =
+            extractCycles boundaryVertices (flip Dict.get nextOnBoundary)
+                |> List.map canonicalCircular
+
         next =
             List.concatMap cyclicPairs orientedEdgeLists |> Dict.fromList
 
@@ -766,6 +776,32 @@ traceCycle start next =
                     []
     in
     step [] start |> List.reverse
+
+
+extractCycles :
+    List comparable
+    -> (comparable -> Maybe comparable)
+    -> List (List comparable)
+extractCycles items next =
+    let
+        step cycles remaining =
+            case remaining of
+                first :: _ ->
+                    let
+                        cycle =
+                            traceCycle first next
+
+                        purge =
+                            Set.fromList cycle
+                    in
+                    step
+                        (cycle :: cycles)
+                        (List.filter (flip Set.member purge >> not) remaining)
+
+                _ ->
+                    cycles
+    in
+    step [] items
 
 
 triangulate : List vertex -> List ( vertex, vertex, vertex )
