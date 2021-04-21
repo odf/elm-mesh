@@ -9,7 +9,7 @@ indices specifying which vertices makes up the face.
 
 There are however two important differences:
   * Faces can have three or more vertices, not just three.
-  * Each edge must appear in exactly two faces, and in opposite directions.
+  * Each edge that is not on the boundary of the mesh must appear in exactly two faces, and in opposite directions.
 
 The second property is best explained by an example:
 
