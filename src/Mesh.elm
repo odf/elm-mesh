@@ -5,9 +5,9 @@ module Mesh exposing
     , fromTriangularMesh, toTriangularMesh
     , combine
     , vertices, vertex, faceIndices, faceVertices
+    , boundaryIndices, boundaryVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
     , mapVertices, withNormals, subdivide, subdivideSmoothly
-    , boundaryIndices, boundaryVertices
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -43,6 +43,7 @@ You can:
 # Properties
 
 @docs vertices, vertex, faceIndices, faceVertices
+@docs boundaryIndices, boundaryVertices
 @docs edgeIndices, edgeVertices, neighborIndices, neighborVertices
 
 
@@ -818,7 +819,7 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
                 Vector3d.plus posIn centroidOfEdgeCenters
                     |> Vector3d.scaleBy 0.5
                     |> (\x -> Point3d.translateBy x Point3d.origin)
-                    |> makeOutputVertex [i]
+                    |> makeOutputVertex [ i ]
 
             else
                 Vector3d.scaleBy (toFloat nrNeighbors - 3) posIn
