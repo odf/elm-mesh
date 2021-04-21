@@ -615,39 +615,28 @@ withNormals toPositionIn toVertexOut (Mesh verts mesh) =
         positions =
             Array.map toPositionIn verts
 
-        vector a b =
-            let
-                p =
-                    Array.get a positions |> Maybe.withDefault Point3d.origin
+        sectorArea a b c =
+            case List.filterMap (flip Array.get positions) [ a, b, c ] of
+                p :: q :: r :: [] ->
+                    Vector3d.from q p |> Vector3d.cross (Vector3d.from q r)
 
-                q =
-                    Array.get b positions |> Maybe.withDefault Point3d.origin
-            in
-            Vector3d.from p q
+                _ ->
+                    Vector3d.zero
+
+        isAtFace a b =
+            Dict.get ( a, b ) mesh.toFace /= Nothing
 
         mapVertex idx v =
             Array.get idx neighbors
                 |> Maybe.withDefault []
                 |> cyclicPairs
-                |> List.filter
-                    (\( u, _ ) ->
-                        Dict.get ( idx, u ) mesh.toBoundaryComponent == Nothing
-                    )
-                |> List.map
-                    (\( a, b ) ->
-                        vector idx a |> Vector3d.cross (vector idx b)
-                    )
+                |> List.filter (\( a, _ ) -> isAtFace idx a)
+                |> List.map (\( a, b ) -> sectorArea a idx b)
                 |> Vector3d.sum
                 |> Vector3d.normalize
                 |> toVertexOut v
-
-        verticesOut =
-            verts
-                |> Array.toList
-                |> List.indexedMap mapVertex
-                |> Array.fromList
     in
-    Mesh verticesOut mesh
+    Mesh (Array.indexedMap mapVertex verts) mesh
 
 
 {-| Subdivide a mesh by first adding a new vertex in the center of each edge,
