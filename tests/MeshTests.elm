@@ -602,28 +602,48 @@ withNormalsWithBoundary =
         (\() ->
             let
                 verts =
-                    Array.fromList
-                        [ Point3d.meters 1 0 0
-                        , Point3d.meters 0 1 0
-                        , Point3d.meters -1 0 0
-                        , Point3d.meters 0 -1 0
-                        ]
+                    [ Point3d.meters 1 0 -1
+                    , Point3d.meters 0 1 -1
+                    , Point3d.meters -1 0 -1
+                    , Point3d.meters 0 -1 -1
+                    , Point3d.meters 1 0 1
+                    , Point3d.meters 0 1 1
+                    , Point3d.meters -1 0 1
+                    , Point3d.meters 0 -1 1
+                    ]
+                        |> Array.fromList
 
-                z =
-                    Vector3d.unitless 0 0 1
+                faces =
+                    [ [ 0, 1, 5, 4 ]
+                    , [ 1, 2, 6, 5 ]
+                    , [ 2, 3, 7, 6 ]
+                    , [ 0, 4, 7, 3 ]
+                    ]
+
+                normals =
+                    [ Vector3d.unitless 1 0 0
+                    , Vector3d.unitless 0 1 0
+                    , Vector3d.unitless -1 0 0
+                    , Vector3d.unitless 0 -1 0
+                    , Vector3d.unitless 1 0 0
+                    , Vector3d.unitless 0 1 0
+                    , Vector3d.unitless -1 0 0
+                    , Vector3d.unitless 0 -1 0
+                    ]
             in
-            Mesh.fromOrientedFaces
-                verts
-                [ [ 0, 1, 2, 3 ] ]
+            Mesh.fromOrientedFaces verts faces
                 |> Result.withDefault Mesh.empty
                 |> Mesh.withNormals identity Tuple.pair
                 |> Expect.all
                     [ Mesh.vertices
+                        >> Array.map Tuple.first
+                        >> Expect.equal verts
+                    , Mesh.faceIndices
+                        >> Expect.equal faces
+                    , Mesh.vertices
                         >> Array.map Tuple.second
                         >> Array.toList
-                        >> Expect.equal [ z, z, z, z ]
-                    , Mesh.faceIndices
-                        >> Expect.equal [ [ 0, 1, 2, 3 ] ]
+                        >> Expect.equal normals
                     ]
         )
 
