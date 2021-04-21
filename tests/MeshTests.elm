@@ -11,6 +11,7 @@ module MeshTests exposing
     , singleTwoGon
     , subdivide
     , subdivideSmoothly
+    , subdivideWithBoundary
     , toTriangular
     , toTriangularWithBoundary
     , undefinedVertex
@@ -714,6 +715,67 @@ subdivide =
                             , ( 3, 0, 3 )
                             , ( 3, 3, 0 )
                             , ( 6, 0, 0 )
+                            ]
+                    ]
+        )
+
+
+subdivideWithBoundary : Test
+subdivideWithBoundary =
+    Test.test "subdivideWithBoundary"
+        (\() ->
+            let
+                verts =
+                    [ Point3d.meters 2 0 0
+                    , Point3d.meters 0 2 0
+                    , Point3d.meters -2 0 0
+                    , Point3d.meters 0 -2 0
+                    ]
+                        |> Array.fromList
+
+                faces =
+                    [ [ 0, 1, 2, 3 ] ]
+            in
+            Mesh.fromOrientedFaces verts faces
+                |> Result.withDefault Mesh.empty
+                |> Mesh.subdivide centroid
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.length
+                        >> Expect.equal 9
+                    , Mesh.edgeIndices
+                        >> List.length
+                        >> Expect.equal 12
+                    , Mesh.faceIndices
+                        >> List.length
+                        >> Expect.equal 4
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 4 4)
+                    , Mesh.faceIndices
+                        >> List.map (List.filter (\i -> i < 4) >> List.length)
+                        >> Expect.equal (List.repeat 4 1)
+                    , Mesh.faceIndices
+                        >> List.map (List.filter (\i -> i < 8) >> List.length)
+                        >> Expect.equal (List.repeat 4 3)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> Expect.equal [ 2, 2, 2, 2, 3, 3, 3, 3, 4 ]
+                    , Mesh.vertices
+                        >> Array.toList
+                        >> List.map (Point3d.toTuple Length.inMeters)
+                        >> List.sort
+                        >> Expect.equalLists
+                            [ ( -2, 0, 0 )
+                            , ( -1, -1, 0 )
+                            , ( -1, 1, 0 )
+                            , ( 0, -2, 0 )
+                            , ( 0, 0, 0 )
+                            , ( 0, 2, 0 )
+                            , ( 1, -1, 0 )
+                            , ( 1, 1, 0 )
+                            , ( 2, 0, 0 )
                             ]
                     ]
         )

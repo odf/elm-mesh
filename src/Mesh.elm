@@ -690,7 +690,9 @@ subdivide composeFn (Mesh verts mesh) =
                 |> List.filterMap identity
 
         facesOut =
-            List.map subFace (Dict.keys mesh.next)
+            Dict.keys mesh.next
+                |> List.filter (\e -> Dict.get e mesh.toFace /= Nothing)
+                |> List.map subFace
     in
     fromOrientedFacesUnchecked vertsOut facesOut
 
