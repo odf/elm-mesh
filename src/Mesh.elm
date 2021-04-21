@@ -736,6 +736,11 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
                 |> mapVertices vertexPosition
                 |> subdivide centroid
 
+        boundaryIndicesSub =
+            boundaryIndices meshSub
+                |> List.concat
+                |> Set.fromList
+
         subFaceIndices =
             faceIndices meshSub
 
@@ -752,10 +757,15 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
             neighborIndices meshSub
 
         edgePointPosition i =
-            Array.get (i + nrVertices) neighborsSub
-                |> Maybe.withDefault [ i + nrVertices ]
-                |> List.filterMap (\k -> vertex k meshSub)
-                |> centroid
+            if Set.member i boundaryIndicesSub then
+                vertex (i + nrVertices) meshSub
+                    |> Maybe.withDefault Point3d.origin
+
+            else
+                Array.get (i + nrVertices) neighborsSub
+                    |> Maybe.withDefault [ i + nrVertices ]
+                    |> List.filterMap (\k -> vertex k meshSub)
+                    |> centroid
 
         makeEdgePoint i ( u, v ) =
             edgePointPosition i
@@ -803,6 +813,12 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
             then
                 Point3d.translateBy posIn Point3d.origin
                     |> makeOutputVertex [ i ]
+
+            else if Set.member i boundaryIndicesSub then
+                Vector3d.plus posIn centroidOfEdgeCenters
+                    |> Vector3d.scaleBy 0.5
+                    |> (\x -> Point3d.translateBy x Point3d.origin)
+                    |> makeOutputVertex [i]
 
             else
                 Vector3d.scaleBy (toFloat nrNeighbors - 3) posIn

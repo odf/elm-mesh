@@ -11,6 +11,7 @@ module MeshTests exposing
     , singleTwoGon
     , subdivide
     , subdivideSmoothly
+    , subdivideSmoothlyWithBoundary
     , subdivideWithBoundary
     , toTriangular
     , toTriangularWithBoundary
@@ -833,6 +834,57 @@ subdivideSmoothly =
                             , ( 5, 0, 5 )
                             , ( 5, 5, 0 )
                             , ( 7, 0, 0 )
+                            ]
+                    ]
+        )
+
+
+subdivideSmoothlyWithBoundary : Test
+subdivideSmoothlyWithBoundary =
+    Test.test "subdivideSmoothlyWithBoundary"
+        (\() ->
+            let
+                verts =
+                    [ Point3d.meters 4 0 0
+                    , Point3d.meters 0 4 0
+                    , Point3d.meters -4 0 0
+                    , Point3d.meters 0 -4 0
+                    ]
+                        |> Array.fromList
+
+                faces =
+                    [ [ 0, 1, 2, 3 ] ]
+
+                baseMesh =
+                    Mesh.fromOrientedFaces verts faces
+                        |> Result.withDefault Mesh.empty
+
+                simpleSubdivision =
+                    Mesh.subdivide centroid baseMesh
+            in
+            baseMesh
+                |> Mesh.subdivideSmoothly
+                    (always False)
+                    identity
+                    (\_ position -> position)
+                |> Expect.all
+                    [ Mesh.faceIndices
+                        >> Expect.equal
+                            (Mesh.faceIndices simpleSubdivision)
+                    , Mesh.vertices
+                        >> Array.toList
+                        >> List.map (Point3d.toTuple Length.inMeters)
+                        >> List.sort
+                        >> Expect.equalLists
+                            [ ( -3, 0, 0 )
+                            , ( -2, -2, 0 )
+                            , ( -2, 2, 0 )
+                            , ( 0, -3, 0 )
+                            , ( 0, 0, 0 )
+                            , ( 0, 3, 0 )
+                            , ( 2, -2, 0 )
+                            , ( 2, 2, 0 )
+                            , ( 3, 0, 0 )
                             ]
                     ]
         )
