@@ -9,6 +9,8 @@ module MeshTests exposing
     , indexedGridEmpty
     , indexedGridMinimal
     , indexedGridNegativeSteps
+    , indexedRing
+    , indexedRingEmpty
     , indexedTube
     , indexedTubeEmpty
     , indexedTubeMinimal
@@ -1043,4 +1045,45 @@ indexedTubeEmpty =
     Test.test "indexedTubeEmpty"
         (\() ->
             Mesh.indexedTube 3 2 Tuple.pair |> Expect.equal Mesh.empty
+        )
+
+
+indexedRing : Test
+indexedRing =
+    Test.test "indexedRing"
+        (\() ->
+            Mesh.indexedRing 3 3 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ ( 0, 0 )
+                            , ( 1, 0 )
+                            , ( 2, 0 )
+                            , ( 0, 1 )
+                            , ( 1, 1 )
+                            , ( 2, 1 )
+                            , ( 0, 2 )
+                            , ( 1, 2 )
+                            , ( 2, 2 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 18
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 0
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 9 4)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal (List.repeat 9 4)
+                    ]
+        )
+
+
+indexedRingEmpty : Test
+indexedRingEmpty =
+    Test.test "indexedRingEmpty"
+        (\() ->
+            Mesh.indexedRing 2 3 Tuple.pair |> Expect.equal Mesh.empty
         )

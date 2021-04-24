@@ -8,7 +8,7 @@ module Mesh exposing
     , boundaryIndices, boundaryVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
     , mapVertices, withNormals, subdivide, subdivideSmoothly
-    , indexedGrid, indexedTube
+    , indexedGrid, indexedRing, indexedTube
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -855,7 +855,7 @@ gridFaces uSteps vSteps =
 
 indexedGrid : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedGrid uSteps vSteps toVertex =
-    if uSteps * vSteps == 0 then
+    if uSteps == 0 || vSteps == 0 then
         empty
 
     else
@@ -880,6 +880,48 @@ indexedTube uSteps vSteps toVertex =
             faces =
                 gridFaces uSteps vSteps
                     |> List.map (List.map (modBy nrVerts))
+        in
+        fromOrientedFacesUnchecked verts faces
+
+
+indexedRing : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
+indexedRing uSteps vSteps toVertex =
+    if uSteps < 3 || vSteps < 3 then
+        empty
+
+    else
+        let
+            gridPoints =
+                List.range 0 (uSteps * vSteps - 1)
+                    |> List.map (\i -> ( i |> modBy uSteps, i // uSteps ))
+
+            gridToIdx =
+                gridPoints
+                    |> List.indexedMap (\i p -> ( p, i ))
+                    |> Dict.fromList
+
+            verts =
+                gridPoints
+                    |> List.map (\( u, v ) -> toVertex u v)
+                    |> Array.fromList
+
+            nextU u =
+                (u + 1) |> modBy uSteps
+
+            nextV v =
+                (v + 1) |> modBy vSteps
+
+            faces =
+                gridPoints
+                    |> List.map
+                        (\( u, v ) ->
+                            [ ( u, v )
+                            , ( nextU u, v )
+                            , ( nextU u, nextV v )
+                            , ( u, nextV v )
+                            ]
+                                |> List.filterMap (flip Dict.get gridToIdx)
+                        )
         in
         fromOrientedFacesUnchecked verts faces
 
