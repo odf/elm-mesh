@@ -851,18 +851,10 @@ indexedGridGeneric uSteps vSteps uClose vClose =
     else
         let
             uCount =
-                if uClose then
-                    uSteps
-
-                else
-                    uSteps + 1
+                when uClose uSteps (uSteps + 1)
 
             vCount =
-                if vClose then
-                    vSteps
-
-                else
-                    vSteps + 1
+                when vClose vSteps (vSteps + 1)
 
             gridPoints =
                 List.range 0 (uCount * vCount - 1)
@@ -909,6 +901,15 @@ indexedRing uSteps vSteps toVertex =
 
 
 -- Various helper functions, mostly for lists
+
+
+when : Bool -> a -> a -> a
+when cond trueVal falseVal =
+    if cond then
+        trueVal
+
+    else
+        falseVal
 
 
 incrMod : Int -> Int -> Int
