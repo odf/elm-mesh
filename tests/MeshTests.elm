@@ -7,8 +7,11 @@ module MeshTests exposing
     , goodFaceList
     , indexedGrid
     , indexedGridEmpty
+    , indexedGridMinimal
     , indexedGridNegativeSteps
-    , indexedGridSingleSquare
+    , indexedTube
+    , indexedTubeEmpty
+    , indexedTubeMinimal
     , mapVertices
     , oneGon
     , orientationMismatch
@@ -930,9 +933,9 @@ indexedGrid =
         )
 
 
-indexedGridSingleSquare : Test
-indexedGridSingleSquare =
-    Test.test "indexedGridSingleSquare"
+indexedGridMinimal : Test
+indexedGridMinimal =
+    Test.test "indexedGridMinimal"
         (\() ->
             Mesh.indexedGrid 1 1 Tuple.pair
                 |> Expect.all
@@ -957,8 +960,7 @@ indexedGridEmpty : Test
 indexedGridEmpty =
     Test.test "indexedGridEmpty"
         (\() ->
-            Mesh.indexedGrid 3 0 Tuple.pair
-                |> Expect.equal Mesh.empty
+            Mesh.indexedGrid 3 0 Tuple.pair |> Expect.equal Mesh.empty
         )
 
 
@@ -968,4 +970,77 @@ indexedGridNegativeSteps =
         (\() ->
             Mesh.indexedGrid 3 -2 Tuple.pair
                 |> Expect.equal Mesh.empty
+        )
+
+
+indexedTube : Test
+indexedTube =
+    Test.test "indexedTube"
+        (\() ->
+            Mesh.indexedTube 3 3 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ ( 0, 0 )
+                            , ( 1, 0 )
+                            , ( 2, 0 )
+                            , ( 3, 0 )
+                            , ( 0, 1 )
+                            , ( 1, 1 )
+                            , ( 2, 1 )
+                            , ( 3, 1 )
+                            , ( 0, 2 )
+                            , ( 1, 2 )
+                            , ( 2, 2 )
+                            , ( 3, 2 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 21
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 2
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 9 4)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal [ 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4 ]
+                    ]
+        )
+
+
+indexedTubeMinimal : Test
+indexedTubeMinimal =
+    Test.test "indexedTubeMinimal"
+        (\() ->
+            Mesh.indexedTube 1 3 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ ( 0, 0 )
+                            , ( 1, 0 )
+                            , ( 0, 1 )
+                            , ( 1, 1 )
+                            , ( 0, 2 )
+                            , ( 1, 2 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 9
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 2
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal [ 4, 4, 4 ]
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 6 3)
+                    ]
+        )
+
+
+indexedTubeEmpty : Test
+indexedTubeEmpty =
+    Test.test "indexedTubeEmpty"
+        (\() ->
+            Mesh.indexedTube 3 2 Tuple.pair |> Expect.equal Mesh.empty
         )

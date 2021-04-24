@@ -8,7 +8,7 @@ module Mesh exposing
     , boundaryIndices, boundaryVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
     , mapVertices, withNormals, subdivide, subdivideSmoothly
-    , indexedGrid
+    , indexedGrid, indexedTube
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -862,6 +862,26 @@ indexedGrid uSteps vSteps toVertex =
         fromOrientedFacesUnchecked
             (gridVertices (uSteps + 1) (vSteps + 1) toVertex)
             (gridFaces uSteps vSteps)
+
+
+indexedTube : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
+indexedTube uSteps vSteps toVertex =
+    if uSteps == 0 || vSteps < 3 then
+        empty
+
+    else
+        let
+            verts =
+                gridVertices (uSteps + 1) vSteps toVertex
+
+            nrVerts =
+                Array.length verts
+
+            faces =
+                gridFaces uSteps vSteps
+                    |> List.map (List.map (modBy nrVerts))
+        in
+        fromOrientedFacesUnchecked verts faces
 
 
 
