@@ -6,6 +6,9 @@ module MeshTests exposing
     , fromTriangularWithBoundary
     , goodFaceList
     , indexedGrid
+    , indexedGridEmpty
+    , indexedGridNegativeSteps
+    , indexedGridSingleSquare
     , mapVertices
     , oneGon
     , orientationMismatch
@@ -924,4 +927,45 @@ indexedGrid =
                         >> List.sort
                         >> Expect.equal [ 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4 ]
                     ]
+        )
+
+
+indexedGridSingleSquare : Test
+indexedGridSingleSquare =
+    Test.test "indexedGridSingleSquare"
+        (\() ->
+            Mesh.indexedGrid 1 1 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ ( 0, 0 ), ( 1, 0 ), ( 0, 1 ), ( 1, 1 ) ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 4
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 1
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal [ 4 ]
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> Expect.equal [ 2, 2, 2, 2 ]
+                    ]
+        )
+
+
+indexedGridEmpty : Test
+indexedGridEmpty =
+    Test.test "indexedGridEmpty"
+        (\() ->
+            Mesh.indexedGrid 3 0 Tuple.pair
+                |> Expect.equal Mesh.empty
+        )
+
+
+indexedGridNegativeSteps : Test
+indexedGridNegativeSteps =
+    Test.test "indexedGridNegativeSteps"
+        (\() ->
+            Mesh.indexedGrid 3 -2 Tuple.pair
+                |> Expect.equal Mesh.empty
         )

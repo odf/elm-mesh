@@ -855,9 +855,13 @@ gridFaces uSteps vSteps =
 
 indexedGrid : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedGrid uSteps vSteps toVertex =
-    fromOrientedFacesUnchecked
-        (gridVertices (uSteps + 1) (vSteps + 1) toVertex)
-        (gridFaces uSteps vSteps)
+    if uSteps * vSteps == 0 then
+        empty
+
+    else
+        fromOrientedFacesUnchecked
+            (gridVertices (uSteps + 1) (vSteps + 1) toVertex)
+            (gridFaces uSteps vSteps)
 
 
 
