@@ -8,6 +8,7 @@ module Mesh exposing
     , boundaryIndices, boundaryVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
     , mapVertices, withNormals, subdivide, subdivideSmoothly
+    , indexedGrid
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -836,6 +837,27 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
             Array.fromList (vertexPoints ++ edgePoints ++ facePoints)
     in
     fromOrientedFacesUnchecked verticesOut subFaceIndices
+
+
+gridVertices : Int -> Int -> (Int -> Int -> vertex) -> Array vertex
+gridVertices uCount vCount toVertex =
+    Array.initialize
+        (uCount * vCount)
+        (\i -> toVertex (i |> modBy uCount) (i // uCount))
+
+
+gridFaces : Int -> Int -> List (List Int)
+gridFaces uSteps vSteps =
+    List.range 0 (uSteps * vSteps - 1)
+        |> List.map (\k -> k + (k // uSteps))
+        |> List.map (\k -> [ k, k + 1, k + uSteps + 2, k + uSteps + 1 ])
+
+
+indexedGrid : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
+indexedGrid uSteps vSteps toVertex =
+    fromOrientedFacesUnchecked
+        (gridVertices (uSteps + 1) (vSteps + 1) toVertex)
+        (gridFaces uSteps vSteps)
 
 
 

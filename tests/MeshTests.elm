@@ -5,6 +5,7 @@ module MeshTests exposing
     , fromTriangular
     , fromTriangularWithBoundary
     , goodFaceList
+    , indexedGrid
     , mapVertices
     , oneGon
     , orientationMismatch
@@ -886,5 +887,41 @@ subdivideSmoothlyWithBoundary =
                             , ( 2, 2, 0 )
                             , ( 3, 0, 0 )
                             ]
+                    ]
+        )
+
+
+indexedGrid : Test
+indexedGrid =
+    Test.test "indexedGrid"
+        (\() ->
+            Mesh.indexedGrid 3 2 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ ( 0, 0 )
+                            , ( 1, 0 )
+                            , ( 2, 0 )
+                            , ( 3, 0 )
+                            , ( 0, 1 )
+                            , ( 1, 1 )
+                            , ( 2, 1 )
+                            , ( 3, 1 )
+                            , ( 0, 2 )
+                            , ( 1, 2 )
+                            , ( 2, 2 )
+                            , ( 3, 2 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 17
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 1
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 6 4)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal [ 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4 ]
                     ]
         )
