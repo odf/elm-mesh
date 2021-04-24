@@ -839,95 +839,81 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
     fromOrientedFacesUnchecked verticesOut subFaceIndices
 
 
-gridVertices : Int -> Int -> (Int -> Int -> vertex) -> Array vertex
-gridVertices uCount vCount toVertex =
-    Array.initialize
-        (uCount * vCount)
-        (\i -> toVertex (i |> modBy uCount) (i // uCount))
-
-
-gridFaces : Int -> Int -> List (List Int)
-gridFaces uSteps vSteps =
-    List.range 0 (uSteps * vSteps - 1)
-        |> List.map (\k -> k + (k // uSteps))
-        |> List.map (\k -> [ k, k + 1, k + uSteps + 2, k + uSteps + 1 ])
-
-
-indexedGrid : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
-indexedGrid uSteps vSteps toVertex =
-    if uSteps == 0 || vSteps == 0 then
-        empty
-
-    else
-        fromOrientedFacesUnchecked
-            (gridVertices (uSteps + 1) (vSteps + 1) toVertex)
-            (gridFaces uSteps vSteps)
-
-
-indexedTube : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
-indexedTube uSteps vSteps toVertex =
-    if uSteps == 0 || vSteps < 3 then
+indexedGridGeneric : Int -> Int -> Bool -> Bool -> Mesh ( Int, Int )
+indexedGridGeneric uSteps vSteps uClose vClose =
+    if
+        (uSteps * vSteps < 1)
+            || (uClose && uSteps < 3)
+            || (vClose && vSteps < 3)
+    then
         empty
 
     else
         let
-            verts =
-                gridVertices (uSteps + 1) vSteps toVertex
+            uCount =
+                if uClose then
+                    uSteps
 
-            nrVerts =
-                Array.length verts
+                else
+                    uSteps + 1
 
-            faces =
-                gridFaces uSteps vSteps
-                    |> List.map (List.map (modBy nrVerts))
-        in
-        fromOrientedFacesUnchecked verts faces
+            vCount =
+                if vClose then
+                    vSteps
 
+                else
+                    vSteps + 1
 
-indexedRing : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
-indexedRing uSteps vSteps toVertex =
-    if uSteps < 3 || vSteps < 3 then
-        empty
-
-    else
-        let
             gridPoints =
-                List.range 0 (uSteps * vSteps - 1)
-                    |> List.map (\i -> ( i |> modBy uSteps, i // uSteps ))
+                List.range 0 (uCount * vCount - 1)
+                    |> List.map (\i -> ( i |> modBy uCount, i // uCount ))
 
             gridToIdx =
                 gridPoints
                     |> List.indexedMap (\i p -> ( p, i ))
                     |> Dict.fromList
 
-            verts =
-                gridPoints
-                    |> List.map (\( u, v ) -> toVertex u v)
-                    |> Array.fromList
-
-            nextU u =
-                (u + 1) |> modBy uSteps
-
-            nextV v =
-                (v + 1) |> modBy vSteps
-
             faces =
                 gridPoints
+                    |> List.filter (\( u, v ) -> u < uSteps && v < vSteps)
                     |> List.map
                         (\( u, v ) ->
                             [ ( u, v )
-                            , ( nextU u, v )
-                            , ( nextU u, nextV v )
-                            , ( u, nextV v )
+                            , ( incrMod u uCount, v )
+                            , ( incrMod u uCount, incrMod v vCount )
+                            , ( u, incrMod v vCount )
                             ]
                                 |> List.filterMap (flip Dict.get gridToIdx)
                         )
         in
-        fromOrientedFacesUnchecked verts faces
+        fromOrientedFacesUnchecked (Array.fromList gridPoints) faces
+
+
+indexedGrid : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
+indexedGrid uSteps vSteps toVertex =
+    indexedGridGeneric uSteps vSteps False False
+        |> mapVertices (\( u, v ) -> toVertex u v)
+
+
+indexedTube : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
+indexedTube uSteps vSteps toVertex =
+    indexedGridGeneric uSteps vSteps False True
+        |> mapVertices (\( u, v ) -> toVertex u v)
+
+
+indexedRing : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
+indexedRing uSteps vSteps toVertex =
+    indexedGridGeneric uSteps vSteps True True
+        |> mapVertices (\( u, v ) -> toVertex u v)
 
 
 
 -- Various helper functions, mostly for lists
+
+
+incrMod : Int -> Int -> Int
+incrMod i modulus =
+    (i + 1) |> modBy modulus
 
 
 flip : (c -> b -> a) -> b -> c -> a
@@ -941,10 +927,10 @@ getAll indices array =
 
 
 traceCycle : a -> (a -> Maybe a) -> List a
-traceCycle start next =
+traceCycle start advance =
     let
         step cycle current =
-            case next current of
+            case advance current of
                 Just to ->
                     if to == start then
                         current :: cycle
@@ -962,14 +948,14 @@ extractCycles :
     List comparable
     -> (comparable -> Maybe comparable)
     -> List (List comparable)
-extractCycles items next =
+extractCycles items advance =
     let
         step cycles remaining =
             case remaining of
                 first :: _ ->
                     let
                         cycle =
-                            traceCycle first next
+                            traceCycle first advance
 
                         purge =
                             Set.fromList cycle
