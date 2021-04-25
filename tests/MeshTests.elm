@@ -5,6 +5,9 @@ module MeshTests exposing
     , fromTriangular
     , fromTriangularWithBoundary
     , goodFaceList
+    , indexedBall
+    , indexedBallEmpty
+    , indexedBallMinimal
     , indexedGrid
     , indexedGridEmpty
     , indexedGridMinimal
@@ -1086,4 +1089,77 @@ indexedRingEmpty =
     Test.test "indexedRingEmpty"
         (\() ->
             Mesh.indexedRing 2 3 Tuple.pair |> Expect.equal Mesh.empty
+        )
+
+
+indexedBall : Test
+indexedBall =
+    Test.test "indexedBall"
+        (\() ->
+            Mesh.indexedBall 3 3 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> List.sort
+                        >> Expect.equal
+                            [ ( 0, 0 )
+                            , ( 0, 1 )
+                            , ( 0, 2 )
+                            , ( 0, 3 )
+                            , ( 1, 1 )
+                            , ( 1, 2 )
+                            , ( 2, 1 )
+                            , ( 2, 2 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 15
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 0
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal [ 3, 3, 3, 3, 3, 3, 4, 4, 4 ]
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal [ 3, 3, 4, 4, 4, 4, 4, 4 ]
+                    ]
+        )
+
+
+indexedBallMinimal : Test
+indexedBallMinimal =
+    Test.test "indexedBallMinimal"
+        (\() ->
+            Mesh.indexedBall 3 2 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> List.sort
+                        >> Expect.equal
+                            [ ( 0, 0 )
+                            , ( 0, 1 )
+                            , ( 0, 2 )
+                            , ( 1, 1 )
+                            , ( 2, 1 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 9
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 0
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal [ 3, 3, 3, 3, 3, 3 ]
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal [ 3, 3, 4, 4, 4 ]
+                    ]
+        )
+
+
+indexedBallEmpty : Test
+indexedBallEmpty =
+    Test.test "indexedBallEmpty"
+        (\() ->
+            Mesh.indexedBall 3 1 Tuple.pair |> Expect.equal Mesh.empty
         )

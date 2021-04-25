@@ -8,7 +8,7 @@ module Mesh exposing
     , boundaryIndices, boundaryVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
     , mapVertices, withNormals, subdivide, subdivideSmoothly
-    , indexedGrid, indexedRing, indexedTube
+    , indexedBall, indexedGrid, indexedRing, indexedTube
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -917,6 +917,54 @@ indexedRing uSteps vSteps toVertex =
     fromOrientedFacesUnchecked
         (Array.map (\( u, v ) -> toVertex u v) verts)
         faces
+
+
+indexedBall : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
+indexedBall uSteps vSteps toVertex =
+    if vSteps < 2 then
+        empty
+
+    else
+        let
+            ( vertsTube, facesTube ) =
+                if vSteps == 2 then
+                    ( Array.initialize uSteps (\u -> ( u, 0 )), [] )
+
+                else
+                    indexedGridData uSteps (vSteps - 2) True False
+
+            verts =
+                vertsTube
+                    |> Array.map (\( u, v ) -> ( u, v + 1 ))
+                    |> Array.push ( 0, 0 )
+                    |> Array.push ( 0, vSteps )
+
+            bottom =
+                Array.length vertsTube
+
+            bottomCapFaces =
+                List.range 0 (uSteps - 1)
+                    |> List.map (\u -> [ u, bottom, u |> incrMod uSteps ])
+
+            top =
+                bottom + 1
+
+            topRow =
+                uSteps * (vSteps - 2)
+
+            topCapFaces =
+                List.range 0 (uSteps - 1)
+                    |> List.map
+                        (\u ->
+                            [ topRow + u
+                            , topRow + (u |> incrMod uSteps)
+                            , top
+                            ]
+                        )
+        in
+        fromOrientedFacesUnchecked
+            (Array.map (\( u, v ) -> toVertex u v) verts)
+            (List.concat [ facesTube, bottomCapFaces, topCapFaces ])
 
 
 
