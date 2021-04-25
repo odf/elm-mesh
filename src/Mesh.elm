@@ -876,9 +876,9 @@ indexedGridData uSteps vSteps uClose vClose =
                     |> List.map
                         (\( u, v ) ->
                             [ ( u, v )
-                            , ( incrMod u uCount, v )
-                            , ( incrMod u uCount, incrMod v vCount )
-                            , ( u, incrMod v vCount )
+                            , ( u |> incrMod uCount, v )
+                            , ( u |> incrMod uCount, v |> incrMod vCount )
+                            , ( u, v |> incrMod vCount )
                             ]
                                 |> List.filterMap (flip Dict.get gridToIdx)
                         )
@@ -933,7 +933,7 @@ when cond trueVal falseVal =
 
 
 incrMod : Int -> Int -> Int
-incrMod i modulus =
+incrMod modulus i =
     (i + 1) |> modBy modulus
 
 
