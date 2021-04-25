@@ -3,6 +3,7 @@ module MeshTests exposing
     , combine
     , empty
     , emptyFace
+    , extrude
     , fromTriangular
     , fromTriangularWithBoundary
     , goodFaceList
@@ -1324,5 +1325,44 @@ ball =
                         >> List.map List.length
                         >> List.sort
                         >> Expect.equal (List.repeat 6 4)
+                    ]
+        )
+
+
+extrude : Test
+extrude =
+    Test.test "extrude"
+        (\() ->
+            Mesh.fromOrientedFaces
+                (Array.fromList [ 'A', 'B', 'C', 'D', 'E' ])
+                [ [ 0, 1, 2, 3, 4 ] ]
+                |> Result.withDefault Mesh.empty
+                |> Mesh.extrude Char.toLower
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal
+                            (List.concat
+                                [ [ 'A', 'B', 'C', 'D', 'E' ]
+                                , [ 'a', 'b', 'c', 'd', 'e' ]
+                                ]
+                            )
+                    , Mesh.faceVertices
+                        >> List.sort
+                        >> Expect.equal
+                            [ [ 'A', 'B', 'C', 'D', 'E' ]
+                            , [ 'A', 'E', 'e', 'a' ]
+                            , [ 'A', 'a', 'b', 'B' ]
+                            , [ 'B', 'b', 'c', 'C' ]
+                            , [ 'C', 'c', 'd', 'D' ]
+                            , [ 'D', 'd', 'e', 'E' ]
+                            , [ 'a', 'e', 'd', 'c', 'b' ]
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 15
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 0
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 10 3)
                     ]
         )
