@@ -886,37 +886,36 @@ indexedGridData uSteps vSteps uClose vClose =
         ( Array.fromList gridPoints, faces )
 
 
-indexedGrid : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
-indexedGrid uSteps vSteps toVertex =
+makeIndexedGrid :
+    Bool
+    -> Bool
+    -> Int
+    -> Int
+    -> (Int -> Int -> vertex)
+    -> Mesh vertex
+makeIndexedGrid uClose vClose uSteps vSteps toVertex =
     let
         ( verts, faces ) =
-            indexedGridData uSteps vSteps False False
+            indexedGridData uSteps vSteps uClose vClose
     in
     fromOrientedFacesUnchecked
         (Array.map (\( u, v ) -> toVertex u v) verts)
         faces
+
+
+indexedGrid : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
+indexedGrid =
+    makeIndexedGrid False False
 
 
 indexedTube : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
-indexedTube uSteps vSteps toVertex =
-    let
-        ( verts, faces ) =
-            indexedGridData uSteps vSteps False True
-    in
-    fromOrientedFacesUnchecked
-        (Array.map (\( u, v ) -> toVertex u v) verts)
-        faces
+indexedTube =
+    makeIndexedGrid False True
 
 
 indexedRing : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
-indexedRing uSteps vSteps toVertex =
-    let
-        ( verts, faces ) =
-            indexedGridData uSteps vSteps True True
-    in
-    fromOrientedFacesUnchecked
-        (Array.map (\( u, v ) -> toVertex u v) verts)
-        faces
+indexedRing =
+    makeIndexedGrid True True
 
 
 indexedBall : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
