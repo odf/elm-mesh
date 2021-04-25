@@ -839,14 +839,19 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
     fromOrientedFacesUnchecked verticesOut subFaceIndices
 
 
-indexedGridGeneric : Int -> Int -> Bool -> Bool -> Mesh ( Int, Int )
-indexedGridGeneric uSteps vSteps uClose vClose =
+indexedGridData :
+    Int
+    -> Int
+    -> Bool
+    -> Bool
+    -> ( Array ( Int, Int ), List (List Int) )
+indexedGridData uSteps vSteps uClose vClose =
     if
         (uSteps * vSteps < 1)
             || (uClose && uSteps < 3)
             || (vClose && vSteps < 3)
     then
-        empty
+        ( Array.empty, [] )
 
     else
         let
@@ -878,25 +883,40 @@ indexedGridGeneric uSteps vSteps uClose vClose =
                                 |> List.filterMap (flip Dict.get gridToIdx)
                         )
         in
-        fromOrientedFacesUnchecked (Array.fromList gridPoints) faces
+        ( Array.fromList gridPoints, faces )
 
 
 indexedGrid : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedGrid uSteps vSteps toVertex =
-    indexedGridGeneric uSteps vSteps False False
-        |> mapVertices (\( u, v ) -> toVertex u v)
+    let
+        ( verts, faces ) =
+            indexedGridData uSteps vSteps False False
+    in
+    fromOrientedFacesUnchecked
+        (Array.map (\( u, v ) -> toVertex u v) verts)
+        faces
 
 
 indexedTube : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedTube uSteps vSteps toVertex =
-    indexedGridGeneric uSteps vSteps False True
-        |> mapVertices (\( u, v ) -> toVertex u v)
+    let
+        ( verts, faces ) =
+            indexedGridData uSteps vSteps False True
+    in
+    fromOrientedFacesUnchecked
+        (Array.map (\( u, v ) -> toVertex u v) verts)
+        faces
 
 
 indexedRing : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedRing uSteps vSteps toVertex =
-    indexedGridGeneric uSteps vSteps True True
-        |> mapVertices (\( u, v ) -> toVertex u v)
+    let
+        ( verts, faces ) =
+            indexedGridData uSteps vSteps True True
+    in
+    fromOrientedFacesUnchecked
+        (Array.map (\( u, v ) -> toVertex u v) verts)
+        faces
 
 
 
