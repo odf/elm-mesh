@@ -8,7 +8,7 @@ module Mesh exposing
     , boundaryIndices, boundaryVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
     , mapVertices, withNormals, subdivide, subdivideSmoothly
-    , indexedBall, indexedGrid, indexedRing, indexedTube
+    , ball, grid, indexedBall, indexedGrid, indexedRing, indexedTube, ring, tube
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -953,6 +953,40 @@ indexedBall uSteps vSteps toVertex =
         fromOrientedFacesUnchecked
             (Array.map (\( u, v ) -> toVertex u v) verts)
             (List.concat [ facesTube, bottomCapFaces, topCapFaces ])
+
+
+toParametrizedGrid :
+    (Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex)
+    -> Int
+    -> Int
+    -> (Float -> Float -> vertex)
+    -> Mesh vertex
+toParametrizedGrid toGrid uSteps vSteps toVertex =
+    toGrid uSteps
+        vSteps
+        (\u v ->
+            toVertex (toFloat u / toFloat uSteps) (toFloat v / toFloat vSteps)
+        )
+
+
+grid : Int -> Int -> (Float -> Float -> vertex) -> Mesh vertex
+grid =
+    toParametrizedGrid indexedGrid
+
+
+tube : Int -> Int -> (Float -> Float -> vertex) -> Mesh vertex
+tube =
+    toParametrizedGrid indexedTube
+
+
+ring : Int -> Int -> (Float -> Float -> vertex) -> Mesh vertex
+ring =
+    toParametrizedGrid indexedRing
+
+
+ball : Int -> Int -> (Float -> Float -> vertex) -> Mesh vertex
+ball =
+    toParametrizedGrid indexedBall
 
 
 

@@ -1,10 +1,12 @@
 module MeshTests exposing
-    ( combine
+    ( ball
+    , combine
     , empty
     , emptyFace
     , fromTriangular
     , fromTriangularWithBoundary
     , goodFaceList
+    , grid
     , indexedBall
     , indexedBallEmpty
     , indexedBallMinimal
@@ -20,6 +22,7 @@ module MeshTests exposing
     , mapVertices
     , oneGon
     , orientationMismatch
+    , ring
     , singleTwoGon
     , subdivide
     , subdivideSmoothly
@@ -27,6 +30,7 @@ module MeshTests exposing
     , subdivideWithBoundary
     , toTriangular
     , toTriangularWithBoundary
+    , tube
     , undefinedVertex
     , unreferencedVertex
     , vertexDuplicateInBoundary
@@ -1162,4 +1166,163 @@ indexedBallEmpty =
     Test.test "indexedBallEmpty"
         (\() ->
             Mesh.indexedBall 3 1 Tuple.pair |> Expect.equal Mesh.empty
+        )
+
+
+grid : Test
+grid =
+    Test.test "grid"
+        (\() ->
+            Mesh.grid 5 2 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ ( 0.0, 0.0 )
+                            , ( 0.2, 0.0 )
+                            , ( 0.4, 0.0 )
+                            , ( 0.6, 0.0 )
+                            , ( 0.8, 0.0 )
+                            , ( 1.0, 0.0 )
+                            , ( 0.0, 0.5 )
+                            , ( 0.2, 0.5 )
+                            , ( 0.4, 0.5 )
+                            , ( 0.6, 0.5 )
+                            , ( 0.8, 0.5 )
+                            , ( 1.0, 0.5 )
+                            , ( 0.0, 1.0 )
+                            , ( 0.2, 1.0 )
+                            , ( 0.4, 1.0 )
+                            , ( 0.6, 1.0 )
+                            , ( 0.8, 1.0 )
+                            , ( 1.0, 1.0 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 27
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 1
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 10 4)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal
+                            (List.concat
+                                [ List.repeat 4 2
+                                , List.repeat 10 3
+                                , List.repeat 4 4
+                                ]
+                            )
+                    ]
+        )
+
+
+tube : Test
+tube =
+    Test.test "tube"
+        (\() ->
+            Mesh.tube 2 5 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ ( 0.0, 0.0 )
+                            , ( 0.5, 0.0 )
+                            , ( 1.0, 0.0 )
+                            , ( 0.0, 0.2 )
+                            , ( 0.5, 0.2 )
+                            , ( 1.0, 0.2 )
+                            , ( 0.0, 0.4 )
+                            , ( 0.5, 0.4 )
+                            , ( 1.0, 0.4 )
+                            , ( 0.0, 0.6 )
+                            , ( 0.5, 0.6 )
+                            , ( 1.0, 0.6 )
+                            , ( 0.0, 0.8 )
+                            , ( 0.5, 0.8 )
+                            , ( 1.0, 0.8 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 25
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 2
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 10 4)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal
+                            (List.concat [ List.repeat 10 3, List.repeat 5 4 ])
+                    ]
+        )
+
+
+ring : Test
+ring =
+    Test.test "ring"
+        (\() ->
+            Mesh.ring 4 4 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ ( 0.0, 0.0 )
+                            , ( 0.25, 0.0 )
+                            , ( 0.5, 0.0 )
+                            , ( 0.75, 0.0 )
+                            , ( 0.0, 0.25 )
+                            , ( 0.25, 0.25 )
+                            , ( 0.5, 0.25 )
+                            , ( 0.75, 0.25 )
+                            , ( 0.0, 0.5 )
+                            , ( 0.25, 0.5 )
+                            , ( 0.5, 0.5 )
+                            , ( 0.75, 0.5 )
+                            , ( 0.0, 0.75 )
+                            , ( 0.25, 0.75 )
+                            , ( 0.5, 0.75 )
+                            , ( 0.75, 0.75 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 32
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 0
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 16 4)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal (List.repeat 16 4)
+                    ]
+        )
+
+
+ball : Test
+ball =
+    Test.test "ball"
+        (\() ->
+            Mesh.ball 4 2 Tuple.pair
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> List.sort
+                        >> Expect.equal
+                            [ ( 0.0, 0.0 )
+                            , ( 0.0, 0.5 )
+                            , ( 0.0, 1.0 )
+                            , ( 0.25, 0.5 )
+                            , ( 0.5, 0.5 )
+                            , ( 0.75, 0.5 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 12
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 0
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 8 3)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal (List.repeat 6 4)
+                    ]
         )
