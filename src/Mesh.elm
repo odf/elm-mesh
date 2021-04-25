@@ -1,14 +1,15 @@
 module Mesh exposing
     ( Mesh
     , empty
-    , fromOrientedFaces
+    , fromOrientedFaces, grid
+    , tube, ring, ball
+    , indexedGrid, indexedTube, indexedRing, indexedBall
     , fromTriangularMesh, toTriangularMesh
     , combine
     , vertices, vertex, faceIndices, faceVertices
     , boundaryIndices, boundaryVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
     , mapVertices, withNormals, subdivide, subdivideSmoothly
-    , ball, grid, indexedBall, indexedGrid, indexedRing, indexedTube, ring, tube
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -28,7 +29,39 @@ You can:
 
 # Constructors
 
-@docs fromOrientedFaces
+@docs fromOrientedFaces, grid
+
+
+## Special grids
+
+These functions work similarly to `grid` but let you construct shapes like
+cylindrical tubes, spheres or toruses, where some edges of the grid 'wrap
+around' and join up with other edges. For example, a cylindrical tube (a
+cylinder without ends) can be thought of as a piece of paper curled around so
+that one edge touches the other.
+
+These functions ensure that in cases like a cylindrical tube, there's actually
+only _one_ set of vertices along the shared edge that is then referenced by the
+faces on either side. Roughly speaking, this is the difference between a
+polyline where the last vertex happens to be the same as the first (and so looks
+like a closed polygon, but isn't actually connected) and a proper polygon where
+the last vertex is actually connected back to the first.
+
+Note that these functions _can_ be used to create meshes that represent actual
+cylinders, spheres, and toruses, but they can also be used to make any mesh that
+is [topologically](https://en.wikipedia.org/wiki/Topology) equivalent to one of
+those. For example, the `ball` function can be used to create meshes for both
+spheres and [ellipsoids](https://en.wikipedia.org/wiki/Ellipsoid).
+
+@docs tube, ring, ball
+
+
+## Indexed grids
+
+These functions work like their non-`indexed` versions, but the function gets
+passed the _indices_ of individual vertices instead of their parameter values.
+
+@docs indexedGrid, indexedTube, indexedRing, indexedBall
 
 
 # Interop
@@ -892,21 +925,25 @@ makeGrid uClose vClose uSteps vSteps toVertex =
         faces
 
 
+{-| -}
 indexedGrid : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedGrid =
     makeGrid False False
 
 
+{-| -}
 indexedTube : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedTube =
     makeGrid False True
 
 
+{-| -}
 indexedRing : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedRing =
     makeGrid True True
 
 
+{-| -}
 indexedBall : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedBall uSteps vSteps toVertex =
     if vSteps < 2 then
@@ -969,21 +1006,66 @@ toParametrizedGrid toGrid uSteps vSteps toVertex =
         )
 
 
+{-| Construct a mesh in the form of a rectangular grid. This is useful for
+constructing things like terrain meshes given a height function, or a
+[parametric surface](https://services.math.duke.edu/education/ccp/materials/mvcalc/parasurfs/para1.html)
+given a function that computes a 3D point (and perhaps a normal vector) from
+U and V parameter values.
+
+The arguments are the number of steps to take in the U and V directions, and a
+function that takes U and V values (which each range between 0 and 1) and
+returns some sort of vertex value. A mesh will then be constructed will all
+vertices correctly connected to each other.
+
+-}
 grid : Int -> Int -> (Float -> Float -> vertex) -> Mesh vertex
 grid =
     toParametrizedGrid indexedGrid
 
 
+{-| Construct a mesh that is topologically equivalent to a cylinder, where the
+U parameter value is along the axis of the sphere and the V parameter value is
+around the circumference. The mesh will wrap in the V direction, so the provided
+function will never be called with V=1; instead, the last vertices in the V
+direction will connect back to the first ones.
+
+If you wanted to construct a 5 meter long, 2 meter radius cylindrical mesh along
+the X axis, you might do something like
+
+    import Mesh
+
+    Mesh.tube 1 72 <|
+        \u v ->
+            let
+                theta =
+                    2 * pi * v
+            in
+            { x = 5 * u
+            , y = 2 * sin theta
+            , z = 2 * cos theta
+            }
+
+-}
 tube : Int -> Int -> (Float -> Float -> vertex) -> Mesh vertex
 tube =
     toParametrizedGrid indexedTube
 
 
+{-| Construct a mesh that is topologically equivalent to a [torus](https://en.wikipedia.org/wiki/Torus).
+This is similar to `tube` except that the mesh wraps in both the U _and_ V
+directions.
+-}
 ring : Int -> Int -> (Float -> Float -> vertex) -> Mesh vertex
 ring =
     toParametrizedGrid indexedRing
 
 
+{-| Construct a mesh that is topologically equivalent to a sphere; the
+resulting mesh will have the basic sphere structure as shown [here](http://www.songho.ca/opengl/gl_sphere.html)
+with U corresponding to Θ and V corresponding to Φ (with V=0 meaning the bottom
+point on the sphere or 'south pole' and V=1 meaning the top point on the
+sphere or 'north pole').
+-}
 ball : Int -> Int -> (Float -> Float -> vertex) -> Mesh vertex
 ball =
     toParametrizedGrid indexedBall
