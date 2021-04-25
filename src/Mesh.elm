@@ -839,13 +839,8 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
     fromOrientedFacesUnchecked verticesOut subFaceIndices
 
 
-indexedGridData :
-    Int
-    -> Int
-    -> Bool
-    -> Bool
-    -> ( Array ( Int, Int ), List (List Int) )
-indexedGridData uSteps vSteps uClose vClose =
+gridData : Int -> Int -> Bool -> Bool -> ( Array ( Int, Int ), List (List Int) )
+gridData uSteps vSteps uClose vClose =
     if
         (uSteps * vSteps < 1)
             || (uClose && uSteps < 3)
@@ -886,17 +881,11 @@ indexedGridData uSteps vSteps uClose vClose =
         ( Array.fromList gridPoints, faces )
 
 
-makeIndexedGrid :
-    Bool
-    -> Bool
-    -> Int
-    -> Int
-    -> (Int -> Int -> vertex)
-    -> Mesh vertex
-makeIndexedGrid uClose vClose uSteps vSteps toVertex =
+makeGrid : Bool -> Bool -> Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
+makeGrid uClose vClose uSteps vSteps toVertex =
     let
         ( verts, faces ) =
-            indexedGridData uSteps vSteps uClose vClose
+            gridData uSteps vSteps uClose vClose
     in
     fromOrientedFacesUnchecked
         (Array.map (\( u, v ) -> toVertex u v) verts)
@@ -905,17 +894,17 @@ makeIndexedGrid uClose vClose uSteps vSteps toVertex =
 
 indexedGrid : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedGrid =
-    makeIndexedGrid False False
+    makeGrid False False
 
 
 indexedTube : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedTube =
-    makeIndexedGrid False True
+    makeGrid False True
 
 
 indexedRing : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
 indexedRing =
-    makeIndexedGrid True True
+    makeGrid True True
 
 
 indexedBall : Int -> Int -> (Int -> Int -> vertex) -> Mesh vertex
@@ -930,7 +919,7 @@ indexedBall uSteps vSteps toVertex =
                     ( Array.initialize uSteps (\u -> ( u, 0 )), [] )
 
                 else
-                    indexedGridData uSteps (vSteps - 2) True False
+                    gridData uSteps (vSteps - 2) True False
 
             verts =
                 vertsTube
