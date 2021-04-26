@@ -830,10 +830,9 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
                     List.length neighbors
 
                 centroidOfEdgeCenters =
-                    neighbors
-                        |> List.filterMap (\k -> vertex k meshSub)
-                        |> centroid
-                        |> Vector3d.from Point3d.origin
+                    List.filterMap (\k -> vertex k meshSub)
+                        >> centroid
+                        >> Vector3d.from Point3d.origin
 
                 centroidOfEdgePoints =
                     neighbors
@@ -851,14 +850,17 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
                     |> makeOutputVertex [ i ]
 
             else if Set.member i boundaryIndicesSub then
-                Vector3d.plus posIn centroidOfEdgeCenters
+                neighbors
+                    |> List.filter (flip Set.member boundaryIndicesSub)
+                    |> centroidOfEdgeCenters
+                    |> Vector3d.plus posIn
                     |> Vector3d.scaleBy 0.5
                     |> (\x -> Point3d.translateBy x Point3d.origin)
                     |> makeOutputVertex [ i ]
 
             else
                 Vector3d.scaleBy (toFloat nrNeighbors - 3) posIn
-                    |> Vector3d.plus centroidOfEdgeCenters
+                    |> Vector3d.plus (centroidOfEdgeCenters neighbors)
                     |> Vector3d.plus (Vector3d.scaleBy 2 centroidOfEdgePoints)
                     |> Vector3d.scaleBy (1 / toFloat nrNeighbors)
                     |> (\x -> Point3d.translateBy x Point3d.origin)

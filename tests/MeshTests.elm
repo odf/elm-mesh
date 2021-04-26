@@ -743,58 +743,61 @@ subdivideWithBoundary =
     Test.test "subdivideWithBoundary"
         (\() ->
             let
-                verts =
-                    [ Point3d.meters 2 0 0
-                    , Point3d.meters 0 2 0
-                    , Point3d.meters -2 0 0
-                    , Point3d.meters 0 -2 0
-                    ]
-                        |> Array.fromList
+                makeVertex u v =
+                    Point3d.meters (16 * u) (8 * v) 0
 
-                faces =
-                    [ [ 0, 1, 2, 3 ] ]
+                baseMesh =
+                    Mesh.grid 2 1 makeVertex
+
+                simpleSubdivision =
+                    Mesh.subdivide centroid baseMesh
             in
-            Mesh.fromOrientedFaces verts faces
-                |> Result.withDefault Mesh.empty
-                |> Mesh.subdivide centroid
+            simpleSubdivision
                 |> Expect.all
                     [ Mesh.vertices
-                        >> Array.length
-                        >> Expect.equal 9
-                    , Mesh.edgeIndices
-                        >> List.length
-                        >> Expect.equal 12
-                    , Mesh.faceIndices
-                        >> List.length
-                        >> Expect.equal 4
-                    , Mesh.faceIndices
-                        >> List.map List.length
-                        >> Expect.equal (List.repeat 4 4)
-                    , Mesh.faceIndices
-                        >> List.map (List.filter (\i -> i < 4) >> List.length)
-                        >> Expect.equal (List.repeat 4 1)
-                    , Mesh.faceIndices
-                        >> List.map (List.filter (\i -> i < 8) >> List.length)
-                        >> Expect.equal (List.repeat 4 3)
-                    , Mesh.neighborIndices
-                        >> Array.toList
-                        >> List.map List.length
-                        >> Expect.equal [ 2, 2, 2, 2, 3, 3, 3, 3, 4 ]
-                    , Mesh.vertices
                         >> Array.toList
                         >> List.map (Point3d.toTuple Length.inMeters)
                         >> List.sort
                         >> Expect.equalLists
-                            [ ( -2, 0, 0 )
-                            , ( -1, -1, 0 )
-                            , ( -1, 1, 0 )
-                            , ( 0, -2, 0 )
-                            , ( 0, 0, 0 )
-                            , ( 0, 2, 0 )
-                            , ( 1, -1, 0 )
-                            , ( 1, 1, 0 )
-                            , ( 2, 0, 0 )
+                            [ ( 0, 0, 0 )
+                            , ( 0, 4, 0 )
+                            , ( 0, 8, 0 )
+                            , ( 4, 0, 0 )
+                            , ( 4, 4, 0 )
+                            , ( 4, 8, 0 )
+                            , ( 8, 0, 0 )
+                            , ( 8, 4, 0 )
+                            , ( 8, 8, 0 )
+                            , ( 12, 0, 0 )
+                            , ( 12, 4, 0 )
+                            , ( 12, 8, 0 )
+                            , ( 16, 0, 0 )
+                            , ( 16, 4, 0 )
+                            , ( 16, 8, 0 )
                             ]
+                    , Mesh.edgeIndices
+                        >> List.length
+                        >> Expect.equal 22
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 8 4)
+                    , Mesh.faceIndices
+                        >> List.map (List.filter (\i -> i < 6) >> List.length)
+                        >> Expect.equal (List.repeat 8 1)
+                    , Mesh.faceIndices
+                        >> List.map (List.filter (\i -> i < 13) >> List.length)
+                        >> Expect.equal (List.repeat 8 3)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal
+                            (List.concat
+                                [ List.repeat 4 2
+                                , List.repeat 8 3
+                                , List.repeat 3 4
+                                ]
+                            )
                     ]
         )
 
@@ -861,20 +864,11 @@ subdivideSmoothlyWithBoundary =
     Test.test "subdivideSmoothlyWithBoundary"
         (\() ->
             let
-                verts =
-                    [ Point3d.meters 4 0 0
-                    , Point3d.meters 0 4 0
-                    , Point3d.meters -4 0 0
-                    , Point3d.meters 0 -4 0
-                    ]
-                        |> Array.fromList
-
-                faces =
-                    [ [ 0, 1, 2, 3 ] ]
+                makeVertex u v =
+                    Point3d.meters (16 * u) (8 * v) 0
 
                 baseMesh =
-                    Mesh.fromOrientedFaces verts faces
-                        |> Result.withDefault Mesh.empty
+                    Mesh.grid 2 1 makeVertex
 
                 simpleSubdivision =
                     Mesh.subdivide centroid baseMesh
@@ -883,7 +877,7 @@ subdivideSmoothlyWithBoundary =
                 |> Mesh.subdivideSmoothly
                     (always False)
                     identity
-                    (\_ position -> position)
+                    (always identity)
                 |> Expect.all
                     [ Mesh.faceIndices
                         >> Expect.equal
@@ -893,15 +887,21 @@ subdivideSmoothlyWithBoundary =
                         >> List.map (Point3d.toTuple Length.inMeters)
                         >> List.sort
                         >> Expect.equalLists
-                            [ ( -3, 0, 0 )
-                            , ( -2, -2, 0 )
-                            , ( -2, 2, 0 )
-                            , ( 0, -3, 0 )
-                            , ( 0, 0, 0 )
-                            , ( 0, 3, 0 )
-                            , ( 2, -2, 0 )
-                            , ( 2, 2, 0 )
-                            , ( 3, 0, 0 )
+                            [ ( 0, 4, 0 )
+                            , ( 1, 1, 0 )
+                            , ( 1, 7, 0 )
+                            , ( 4, 0, 0 )
+                            , ( 4, 4, 0 )
+                            , ( 4, 8, 0 )
+                            , ( 8, 0, 0 )
+                            , ( 8, 4, 0 )
+                            , ( 8, 8, 0 )
+                            , ( 12, 0, 0 )
+                            , ( 12, 4, 0 )
+                            , ( 12, 8, 0 )
+                            , ( 15, 1, 0 )
+                            , ( 15, 7, 0 )
+                            , ( 16, 4, 0 )
                             ]
                     ]
         )
