@@ -792,7 +792,7 @@ subdivideSmoothly isFixed vertexPosition toOutputVertex meshIn =
             neighborIndices meshSub
 
         edgePointPosition i =
-            if Set.member i boundaryIndicesSub then
+            if Set.member (i + nrVertices) boundaryIndicesSub then
                 vertex (i + nrVertices) meshSub
                     |> Maybe.withDefault Point3d.origin
 

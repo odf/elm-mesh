@@ -27,6 +27,7 @@ module MeshTests exposing
     , subdivide
     , subdivideSmoothly
     , subdivideSmoothlyWithBoundary
+    , subdivideSmoothlyWithBoundary2
     , subdivideWithBoundary
     , toTriangular
     , toTriangularWithBoundary
@@ -901,6 +902,84 @@ subdivideSmoothlyWithBoundary =
                             , ( 15, 1, 0 )
                             , ( 15, 7, 0 )
                             , ( 16, 4, 0 )
+                            ]
+                    ]
+        )
+
+
+subdivideSmoothlyWithBoundary2 : Test
+subdivideSmoothlyWithBoundary2 =
+    Test.test "subdivideSmoothlyWithBoundary2"
+        (\() ->
+            let
+                makeVertex u v =
+                    Point3d.meters (16 * u) (16 * v) 0
+
+                baseMesh =
+                    Mesh.grid 2 2 makeVertex
+            in
+            baseMesh
+                |> Mesh.subdivideSmoothly
+                    (always False)
+                    identity
+                    (always identity)
+                |> Expect.all
+                    [ Mesh.boundaryVertices
+                        >> List.length
+                        >> Expect.equal 1
+                    , Mesh.edgeIndices
+                        >> List.length
+                        >> Expect.equal 40
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 16 4)
+                    , Mesh.faceIndices
+                        >> List.map (List.filter (\i -> i < 9) >> List.length)
+                        >> Expect.equal (List.repeat 16 1)
+                    , Mesh.faceIndices
+                        >> List.map (List.filter (\i -> i < 21) >> List.length)
+                        >> Expect.equal (List.repeat 16 3)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal
+                            (List.concat
+                                [ List.repeat 4 2
+                                , List.repeat 12 3
+                                , List.repeat 9 4
+                                ]
+                            )
+                    , Mesh.vertices
+                        >> Array.toList
+                        >> List.map (Point3d.toTuple Length.inMeters)
+                        >> List.sort
+                        >> Expect.equal
+                            [ ( 0, 4, 0 )
+                            , ( 0, 8, 0 )
+                            , ( 0, 12, 0 )
+                            , ( 1, 1, 0 )
+                            , ( 1, 15, 0 )
+                            , ( 4, 0, 0 )
+                            , ( 4, 4, 0 )
+                            , ( 4, 8, 0 )
+                            , ( 4, 12, 0 )
+                            , ( 4, 16, 0 )
+                            , ( 8, 0, 0 )
+                            , ( 8, 4, 0 )
+                            , ( 8, 8, 0 )
+                            , ( 8, 12, 0 )
+                            , ( 8, 16, 0 )
+                            , ( 12, 0, 0 )
+                            , ( 12, 4, 0 )
+                            , ( 12, 8, 0 )
+                            , ( 12, 12, 0 )
+                            , ( 12, 16, 0 )
+                            , ( 15, 1, 0 )
+                            , ( 15, 15, 0 )
+                            , ( 16, 4, 0 )
+                            , ( 16, 8, 0 )
+                            , ( 16, 12, 0 )
                             ]
                     ]
         )
