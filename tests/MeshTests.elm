@@ -1333,8 +1333,12 @@ extrude : Test
 extrude =
     Test.test "extrude"
         (\() ->
+            let
+                verts =
+                    [ 'A', 'B', 'C', 'D', 'E' ]
+            in
             Mesh.fromOrientedFaces
-                (Array.fromList [ 'A', 'B', 'C', 'D', 'E' ])
+                (Array.fromList verts)
                 [ [ 0, 1, 2, 3, 4 ] ]
                 |> Result.withDefault Mesh.empty
                 |> Mesh.extrude Char.toLower
@@ -1343,8 +1347,8 @@ extrude =
                         >> Array.toList
                         >> Expect.equal
                             (List.concat
-                                [ [ 'A', 'B', 'C', 'D', 'E' ]
-                                , [ 'a', 'b', 'c', 'd', 'e' ]
+                                [ verts
+                                , List.map Char.toLower verts
                                 ]
                             )
                     , Mesh.faceVertices

@@ -88,7 +88,7 @@ passed the _indices_ of individual vertices instead of their parameter values.
 
 -}
 
-import Array exposing (Array, push)
+import Array exposing (Array)
 import Dict exposing (Dict)
 import Point3d exposing (Point3d)
 import Quantity exposing (Unitless)
