@@ -10,6 +10,7 @@ module Mesh exposing
     , boundaryIndices, boundaryVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
     , mapVertices, withNormals, subdivide, subdivideSmoothly
+    , extrude
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -1071,6 +1072,37 @@ sphere or 'north pole').
 ball : Int -> Int -> (Float -> Float -> vertex) -> Mesh vertex
 ball =
     toParametrizedGrid indexedBall
+
+
+extrude : (vertex -> vertex) -> Mesh vertex -> Mesh vertex
+extrude pushVertex meshIn =
+    let
+        vertsFront =
+            vertices meshIn
+
+        vertsBack =
+            Array.map pushVertex vertsFront
+
+        offset =
+            Array.length vertsFront
+
+        facesFront =
+            faceIndices meshIn
+
+        facesBack =
+            List.map (List.reverse >> List.map ((+) offset)) facesFront
+
+        sideFacesForBoundary bnd =
+            cyclicPairs bnd
+                |> List.map (\( v, w ) -> [ v, w, w + offset, v + offset ])
+
+        facesSides =
+            boundaryIndices meshIn
+                |> List.concatMap sideFacesForBoundary
+    in
+    fromOrientedFacesUnchecked
+        (Array.append vertsFront vertsBack)
+        (List.concat [ facesFront, facesBack, facesSides ])
 
 
 
