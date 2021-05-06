@@ -84,7 +84,7 @@ passed the _indices_ of individual vertices instead of their parameter values.
 
 # Transformations
 
-@docs mapVertices, withNormals, subdivide, subdivideSmoothly
+@docs mapVertices, withNormals, subdivide, subdivideSmoothly, extrude
 
 -}
 
@@ -1074,6 +1074,13 @@ ball =
     toParametrizedGrid indexedBall
 
 
+{-| Extrude a mesh. This adds a duplicate of the original mesh with the face
+orientations reversed and the provided function applied to the vertices. The
+duplicate is then connected to the original along any boundary components.
+For example, if the original mesh is a hexagon in the xy plane, and the vertex
+mapping moves each vertex up along the z-direction, the result is a hexagonal
+prism.
+-}
 extrude : (vertex -> vertex) -> Mesh vertex -> Mesh vertex
 extrude pushVertex meshIn =
     let
