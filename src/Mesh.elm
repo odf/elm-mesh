@@ -1180,8 +1180,8 @@ extractCycles items advance =
 triangulate : List vertex -> List ( vertex, vertex, vertex )
 triangulate corners =
     case corners of
-        u :: v :: rest ->
-            List.map2 (\r s -> ( u, r, s )) (v :: rest) rest
+        u :: v :: w :: rest ->
+            ( w, u, v ) :: List.map2 (\r s -> ( u, r, s )) (w :: rest) rest
 
         _ ->
             []

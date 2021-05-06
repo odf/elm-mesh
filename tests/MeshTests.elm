@@ -420,16 +420,16 @@ toTriangular =
                         >> Expect.equal [ 'a', 'b', 'c', 'd' ]
                     , TriangularMesh.faceIndices
                         >> Expect.equal
-                            [ ( 0, 1, 2 )
+                            [ ( 2, 0, 1 )
                             , ( 0, 2, 3 )
-                            , ( 0, 3, 2 )
+                            , ( 2, 0, 3 )
                             , ( 0, 2, 1 )
                             ]
                     , TriangularMesh.faceVertices
                         >> Expect.equal
-                            [ ( 'a', 'b', 'c' )
+                            [ ( 'c', 'a', 'b' )
                             , ( 'a', 'c', 'd' )
-                            , ( 'a', 'd', 'c' )
+                            , ( 'c', 'a', 'd' )
                             , ( 'a', 'c', 'b' )
                             ]
                     ]
@@ -450,10 +450,10 @@ toTriangularWithBoundary =
                         >> Array.toList
                         >> Expect.equal [ 'a', 'b', 'c', 'd' ]
                     , TriangularMesh.faceIndices
-                        >> Expect.equal [ ( 0, 1, 2 ), ( 0, 2, 3 ) ]
+                        >> Expect.equal [ ( 2, 0, 1 ), ( 0, 2, 3 ) ]
                     , TriangularMesh.faceVertices
                         >> Expect.equal
-                            [ ( 'a', 'b', 'c' ), ( 'a', 'c', 'd' ) ]
+                            [ ( 'c', 'a', 'b' ), ( 'a', 'c', 'd' ) ]
                     ]
         )
 
