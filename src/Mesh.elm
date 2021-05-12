@@ -5,12 +5,11 @@ module Mesh exposing
     , tube, ring, ball
     , indexedGrid, indexedTube, indexedRing, indexedBall
     , fromTriangularMesh, toTriangularMesh
-    , combine
+    , combine, filterFaces
     , vertices, vertex, faceIndices, faceVertices
     , boundaryIndices, boundaryVertices
     , edgeIndices, edgeVertices, neighborIndices, neighborVertices
-    , mapVertices, withNormals, subdivide, subdivideSmoothly
-    , extrude
+    , mapVertices, withNormals, subdivide, subdivideSmoothly, extrude
     )
 
 {-| This module provides functions for working with indexed meshes.
@@ -70,9 +69,9 @@ passed the _indices_ of individual vertices instead of their parameter values.
 @docs fromTriangularMesh, toTriangularMesh
 
 
-# Combining meshes
+# Combining and splitting meshes
 
-@docs combine
+@docs combine, filterFaces
 
 
 # Properties
@@ -1110,6 +1109,40 @@ extrude pushVertex meshIn =
     fromOrientedFacesUnchecked
         (Array.append vertsFront vertsBack)
         (List.concat [ facesFront, facesBack, facesSides ])
+
+
+{-| Keep faces that satisfy the test and vertices in those faces.
+-}
+filterFaces : (List vertex -> Bool) -> Mesh vertex -> Mesh vertex
+filterFaces testFace mesh =
+    let
+        verts =
+            vertices mesh
+
+        isGoodFace =
+            List.filterMap (flip Array.get verts) >> testFace
+
+        goodFaces =
+            faceIndices mesh |> List.filter isGoodFace
+
+        keptIndices =
+            List.concat goodFaces |> Set.fromList |> Set.toList
+
+        indexMap =
+            List.indexedMap (\i v -> ( v, i )) keptIndices
+                |> Dict.fromList
+
+        mapFace =
+            List.filterMap (flip Dict.get indexMap)
+
+        vertsOut =
+            List.filterMap (flip Array.get verts) keptIndices
+                |> Array.fromList
+
+        facesOut =
+            List.map mapFace goodFaces
+    in
+    fromOrientedFacesUnchecked vertsOut facesOut
 
 
 

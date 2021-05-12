@@ -4,6 +4,7 @@ module MeshTests exposing
     , empty
     , emptyFace
     , extrude
+    , filterFaces
     , fromTriangular
     , fromTriangularWithBoundary
     , goodFaceList
@@ -1447,5 +1448,49 @@ extrude =
                         >> Array.toList
                         >> List.map List.length
                         >> Expect.equal (List.repeat 10 3)
+                    ]
+        )
+
+
+filterFaces : Test
+filterFaces =
+    Test.test "filterFaces"
+        (\() ->
+            Mesh.indexedGrid 3 3 Tuple.pair
+                |> Mesh.filterFaces (\vs -> List.minimum vs /= Just ( 2, 2 ))
+                |> Expect.all
+                    [ Mesh.vertices
+                        >> Array.toList
+                        >> Expect.equal
+                            [ ( 0, 0 )
+                            , ( 1, 0 )
+                            , ( 2, 0 )
+                            , ( 3, 0 )
+                            , ( 0, 1 )
+                            , ( 1, 1 )
+                            , ( 2, 1 )
+                            , ( 3, 1 )
+                            , ( 0, 2 )
+                            , ( 1, 2 )
+                            , ( 2, 2 )
+                            , ( 3, 2 )
+                            , ( 0, 3 )
+                            , ( 1, 3 )
+                            , ( 2, 3 )
+                            ]
+                    , Mesh.edgeIndices >> List.length >> Expect.equal 22
+                    , Mesh.boundaryIndices >> List.length >> Expect.equal 1
+                    , Mesh.faceIndices
+                        >> List.map List.length
+                        >> Expect.equal (List.repeat 8 4)
+                    , Mesh.neighborIndices
+                        >> Array.toList
+                        >> List.map List.length
+                        >> List.sort
+                        >> Expect.equal
+                            (List.repeat 5 2
+                                ++ List.repeat 6 3
+                                ++ List.repeat 4 4
+                            )
                     ]
         )
